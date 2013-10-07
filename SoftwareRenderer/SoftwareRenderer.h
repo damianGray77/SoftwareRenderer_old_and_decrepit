@@ -67,15 +67,18 @@ public:
 	VOID Clear(DWORD color);
 	HRESULT Render();
 	HRESULT SetupGeometry();
-	VOID DrawLine(Vertex2c &v1, Vertex2c &v2);
+	HRESULT SetupTextures();
+
+	VOID DrawScanLineTriangle(Triangle &t);
+    VOID DrawHalfSpaceTriangle(Triangle &t);
+
+    /*VOID DrawLine(Vertex2c &v1, Vertex2c &v2);
 	VOID DrawLine(Vertex3c &v1, Vertex3c &v2);
-	VOID DrawTriangle(Vertex2c &v1, Vertex2c &v2, Vertex2c &v3);
-	VOID DrawTriangle(DWORD* sBits, FLOAT* zBits, const Vertex3c &v1, const Vertex3c &v2, const Vertex3c &v3);
-	VOID DrawTriangle(WinBuffer &dBuffer, Buffer &zBuffer, Triangle &t);
 	VOID DrawTriangle2(DWORD* sBits, FLOAT* zBits, const Vertex3c &v1, const Vertex3c &v2, const Vertex3c &v3);
 	VOID DrawTriangleTextured(Vertex3c &v1, Vertex3c &v2, Vertex3c &v3);
-	VOID ScanLine(ScanLine2 &data);
-	//VOID ScanLineTextured(ScanLineT &data);
+	VOID DrawTriangle(Vertex2c &v1, Vertex2c &v2, Vertex2c &v3);
+	VOID DrawTriangle(DWORD* sBits, FLOAT* zBits, const Vertex3c &v1, const Vertex3c &v2, const Vertex3c &v3);*/
+
 	HRESULT SetSize(DWORD height, DWORD width);
 	VOID CleanUp();
 
@@ -87,13 +90,9 @@ public:
 	HDC mDeviceContext;
 	FLOAT fov, dist, clipScale;
 	LONG clipNear, clipFar;
-	ScanLineData2 scanData2;
-	ScanLineData3 scanData3;
-	//ScanLineDataT scanDataT;
-	ScanLine2 scanLine2;
-	ScanLine3 scanLine3;
-	//ScanLineT scanLineT;
+    LONG width, height;
 	static Model player;
+	Bitmap *textures[256];
 	
 	Matrix4x4 mWorld;
 	Matrix3x3 mWorldRot;

@@ -153,14 +153,18 @@ Vertex3 &Vertex3::operator *=(const Matrix3x3 &m) {
 }
 
 const BOOL Vertex3::operator ==(const Vertex3 &v){
-	return ((x >= v.x - FLT_MARGIN && x <= v.x + FLT_MARGIN) &&
-			(y >= v.y - FLT_MARGIN && y <= v.y + FLT_MARGIN) &&
-			(z >= v.z - FLT_MARGIN && z <= v.z + FLT_MARGIN));
+	return
+		   (x < v.x ? v.x - x : x - v.x) <= FLT_MARGIN
+		&& (y < v.y ? v.y - y : y - v.y) <= FLT_MARGIN
+		&& (z < v.z ? v.z - z : z - v.z) <= FLT_MARGIN
+	;
 }
 
 const BOOL Vertex3::operator !=(const Vertex3 &v) {
-	return ((x < v.x - FLT_MARGIN || x > v.x + FLT_MARGIN) ||
-			(y < v.y - FLT_MARGIN || y > v.y + FLT_MARGIN) ||
-			(z < v.z - FLT_MARGIN || z > v.z + FLT_MARGIN));
+	return
+		   (x < v.x ? v.x - x : x - v.x) > FLT_MARGIN
+		&& (y < v.y ? v.y - y : y - v.y) > FLT_MARGIN
+		&& (z < v.z ? v.z - z : z - v.z) > FLT_MARGIN
+	;
 }
 

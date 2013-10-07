@@ -5,6 +5,7 @@ struct Triangle {
 	Vertex3c v1;
 	Vertex3c v2;
 	Vertex3c v3;
+	int texId;
 };
 
 #endif

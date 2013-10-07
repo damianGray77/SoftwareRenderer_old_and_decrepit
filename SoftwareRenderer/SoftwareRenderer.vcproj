@@ -232,6 +232,14 @@
 				RelativePath=".\WinBuffer.cpp"
 				>
 			</File>
+			<Filter
+				Name="Files"
+				>
+				<File
+					RelativePath=".\Bitmap.cpp"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -310,6 +318,14 @@
 				RelativePath=".\WinBuffer.h"
 				>
 			</File>
+			<Filter
+				Name="Files"
+				>
+				<File
+					RelativePath=".\Bitmap.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Resource Files"

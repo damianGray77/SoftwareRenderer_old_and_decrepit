@@ -16,7 +16,7 @@ VOID Model::CalculateNormals(BOOL normalize) {
 	tblVertRefs = new INT[numVerts];
 	memset(tblVertRefs, 0, sizeof(INT) * numVerts);
 	
-	for(INT i = 0; i < numFaces; i++) {
+	for(INT i = 0; i < numFaces; ++i) {
 		a = polygons[i].verts[0];
 		b = polygons[i].verts[1];
 		c = polygons[i].verts[2];
@@ -35,12 +35,12 @@ VOID Model::CalculateNormals(BOOL normalize) {
 		vertices[b].normal += norm;
 		vertices[c].normal += norm;
 
-		tblVertRefs[a]++;
-		tblVertRefs[b]++;
-		tblVertRefs[c]++;
+		++tblVertRefs[a];
+		++tblVertRefs[b];
+		++tblVertRefs[c];
 	}
 
-	for(int i = 0; i < numVerts; i++) {
+	for(int i = 0; i < numVerts; ++i) {
 		vertices[i].normal /= (FLOAT)tblVertRefs[i];
 		vertices[i].normal = Vector3::Normal(vertices[i].normal);
 	}

@@ -2,7 +2,7 @@
 #define SOFTWARERENDERER_TEXTURE_H
 
 struct Texture {
-	CHAR name[64];
+	INT textureId;
 	Color4b ambient, diffuse, specular;
 	FLOAT specLevel;
 };

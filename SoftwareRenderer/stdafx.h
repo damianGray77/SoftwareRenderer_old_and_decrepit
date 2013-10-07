@@ -32,5 +32,7 @@
 
 #include "Resource.h"
 
+#include "Bitmap.h"
+
 #include "SoftwareRenderer.h"
 #include "Main.h"

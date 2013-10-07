@@ -41,6 +41,7 @@ public:
 
 struct Vertex3c {
 	FLOAT x, y, z;
+    FLOAT u, v;
 	DWORD color;
 };
 
@@ -48,13 +49,14 @@ struct PVertex3 {
 	Vertex3 position;
 	Vertex3 posTrans;
 	Vector3 normal;
+    Vertex2 uvMap;
 };
 
 struct PVertex3c {
 	Vertex3 position;
 	Vertex3 posTrans;
 	Vertex3c posProj;
-	Vertex3 uvMap;
+	Vertex2 uvMap;
 	Vector3 normal;
 	DWORD color;
 
@@ -75,7 +77,6 @@ struct PVertex3c {
 			}, {
 				v2.uvMap.x
 				, v2.uvMap.y
-				, v2.uvMap.z
 			}, {
 				v2.normal.x
 				, v2.normal.y
@@ -91,7 +92,7 @@ struct PVertex3c {
 			{ v2.x, v2.y, v2.z, }
 			, { 0.0f, 0.0f, 0.0f }
 			, { 0.0f, 0.0f, 0.0f }
-			, { 0.0f, 0.0f, 0.0f }
+			, { 0.0f, 0.0f }
 			, { 0.0f, 0.0f, 0.0f }
 			, v2.color
 		};

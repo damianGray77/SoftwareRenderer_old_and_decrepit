@@ -9,8 +9,8 @@ public:
 	Polygon3 *polygons;
 	INT numVisible;
 	INT *visible;
-	INT	numMats;
-	Texture *tex;
+	INT	numTexts;
+	Texture *textures;
 
 	Model();
 	~Model();

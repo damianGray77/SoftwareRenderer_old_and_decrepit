@@ -166,11 +166,11 @@ VOID Camera::CheckForMovement() {
 	}
 
 	if(GetKeyState(VK_LEFT) & 0x80) {
-		RotateAroundPoint(view, 30.0f, 0, 1, 0);	
+		RotateView(30.0f, 0, 1, 0);	
 	}
 
 	if(GetKeyState(VK_RIGHT) & 0x80) {
-		RotateAroundPoint(view, -30.0f, 0, 1, 0);	
+		RotateView(-30.0f, 0, 1, 0);	
 	}
 
 	if(GetKeyState('A') & 0x80) {

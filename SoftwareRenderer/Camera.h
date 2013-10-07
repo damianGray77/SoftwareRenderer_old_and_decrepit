@@ -10,9 +10,11 @@ public:
 	Vector3 UpVector() { return upVector; }
 	Vector3 Strafe()	{ return strafe; }
 
-	VOID PositionCamera(FLOAT positionX, FLOAT positionY, FLOAT positionZ,
-											FLOAT viewX,     FLOAT viewY,     FLOAT viewZ,
-											FLOAT upVectorX, FLOAT upVectorY, FLOAT upVectorZ);
+	VOID PositionCamera(
+		FLOAT positionX, FLOAT positionY, FLOAT positionZ,
+		FLOAT viewX,     FLOAT viewY,     FLOAT viewZ,
+		FLOAT upVectorX, FLOAT upVectorY, FLOAT upVectorZ
+	);
 	VOID MoveCamera(FLOAT speed);
 	VOID StrafeCamera(FLOAT speed);
 	VOID RotateView(FLOAT angle, FLOAT x, FLOAT y, FLOAT z);

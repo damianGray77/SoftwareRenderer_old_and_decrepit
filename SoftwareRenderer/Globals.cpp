@@ -44,8 +44,8 @@ float inverseSqrt(float number) {
 
 	x2 = number * 0.5f;
 	y  = number;
-	i  = *(long*)&y;												// evil floating point bit level hacking
-	i  = 0x5f3759df - (i >> 1);							// what the fuck?
+	i  = *(long*)&y;							// evil floating point bit level hacking
+	i  = 0x5f3759df - (i >> 1);					// what the fuck?
 	y  = *(float*)&i;
 	y  = y * (threehalfs - (x2 * y * y));		// 1st iteration
 	y  = y * (threehalfs - (x2 * y * y));		// 2nd iteration, this can be removed
@@ -54,13 +54,13 @@ float inverseSqrt(float number) {
 }
 
 windowProperties props = {
-	NULL,
-	{ 0, 0, 0, 0, },
-	640, 
-	480, 
-	16, 
-	TRUE, 
-	L"GameTutorials", 
-	L"www.GameTutorials.com - First OpenGL Program", 
-	0.0f,
+	NULL
+	, { 0, 0, 0, 0, }
+	, 320
+	, 200
+	, 16
+	, TRUE
+	, L"GameTutorials"
+	, L"www.GameTutorials.com - First OpenGL Program" 
+	, 0.0f
 };

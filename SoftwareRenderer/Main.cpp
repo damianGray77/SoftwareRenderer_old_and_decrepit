@@ -58,7 +58,7 @@ VOID ChangeToFullScreen() {
 VOID InitSinCos() {
 	DOUBLE val;
 	
-	for(INT i = 0; i < SINCOSMAX; i++) {
+	for(INT i = 0; i < SINCOSMAX; ++i) {
 		val = i * PI / (SINCOSMAX / 2.0);
 		sinTbl[i] = (FLOAT)sin(val);
 		cosTbl[i] = (FLOAT)cos(val);
@@ -67,7 +67,7 @@ VOID InitSinCos() {
 
 VOID CalculateFrameRate() {
 	static FLOAT fps = 0.0f;
-  static FLOAT lastTime = 0.0f;
+    static FLOAT lastTime = 0.0f;
 	static WCHAR strFrameRate[50] = {0};
 
     FLOAT currentTime = GetTickCount() * 0.001f;				
@@ -138,26 +138,33 @@ INT WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR cmdLine, INT cmdshow) {
 
 	InitWindow();
 	InitSinCos();
+	
+	BOOL didFailInit =
+		NULL == props.hWnd
+		|| FAILED(g_3D -> Init())
+		|| FAILED(g_3D -> SetupGeometry())
+		|| FAILED(g_3D -> SetupTextures())
+	;
 
-	if(NULL != props.hWnd) {
-		if(SUCCEEDED( g_3D -> Init())) {
-			if(SUCCEEDED( g_3D -> SetupGeometry())) {
-				ShowWindow(props.hWnd, SW_SHOWNORMAL);
-				UpdateWindow(props.hWnd);
+	if(didFailInit) {
+		DeInitWindow();
 
-				SetFocus(props.hWnd);
-				if(FALSE == props.fullScreen) {
-					SetForegroundWindow(props.hWnd);
-				}
-
-				//ShowCursor(FALSE);
-
-				g_Camera.PositionCamera(0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-
-				par = MainLoop();
-			}
-		}		
+		return par;
 	}
+	
+	ShowWindow(props.hWnd, SW_SHOWNORMAL);
+	UpdateWindow(props.hWnd);
+
+	SetFocus(props.hWnd);
+	if(!props.fullScreen) {
+		SetForegroundWindow(props.hWnd);
+	}
+
+	//ShowCursor(FALSE);
+
+	g_Camera.PositionCamera(0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+
+	par = MainLoop();
 
 	DeInitWindow();
 
@@ -168,8 +175,9 @@ LRESULT WINAPI MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch(msg) {
 		case WM_SIZE:
 			if(!props.fullScreen) {
-				UINT width = LOWORD(lParam) < 50 ? 50 : LOWORD(lParam),
-					 height = HIWORD(lParam) < 50 ? 50 : HIWORD(lParam);
+				UINT width = LOWORD(lParam) < 50 ? 50 : LOWORD(lParam);
+				UINT height = HIWORD(lParam) < 50 ? 50 : HIWORD(lParam);
+				
 				g_3D -> SetSize(width, height);
 			}
 			
@@ -177,16 +185,18 @@ LRESULT WINAPI MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         case WM_DESTROY:
             g_3D -> CleanUp();
             PostQuitMessage(0);
+            
             return 0;
 		//case WM_PAINT:
             //g_3D -> Render();
             //ValidateRect(hWnd, NULL);
 
-          return 0;
+          //return 0;
 		case WM_KEYDOWN:
 			if(wParam == VK_ESCAPE) {
 				SendMessage(hWnd, WM_CLOSE, 0, 0);
 			}
+			
 			return 0;
     }
 

@@ -28,7 +28,7 @@ HRESULT SoftwareRenderer::Init() {
 	if(
 		FAILED(CreateBuffer(mBuffer))
 		|| FAILED(CreateBuffer(cBuffer))
-		|| FALSE == CreateBuffer(zBuffer)
+		|| !CreateBuffer(zBuffer)
 	) {
 		return E_FAIL;
 	}
@@ -41,21 +41,22 @@ HRESULT SoftwareRenderer::Init() {
 }
 
 HRESULT SoftwareRenderer::SwapBuffers() {
-	assert(mDeviceContext != NULL);
-	assert(mBuffer.GetBufDC() != NULL);
+	assert(NULL != mDeviceContext);
+	assert(NULL != mBuffer.GetBufDC());
 
 	GetClientRect(props.hWnd, &props.screenRect);
 
-	if(FALSE == BitBlt(mDeviceContext,
-		props.screenRect.left,
-		props.screenRect.top,
-		(props.screenRect.right - props.screenRect.left) + 1, 
-		(props.screenRect.bottom - props.screenRect.top) + 1,
-		mBuffer.GetBufDC(),
-		0,
-		0,
-		SRCCOPY)
-	) {
+	if(!BitBlt(
+		mDeviceContext
+		, props.screenRect.left
+		, props.screenRect.top
+		, 1 + props.screenRect.right - props.screenRect.left
+		, 1 + props.screenRect.bottom - props.screenRect.top
+		, mBuffer.GetBufDC()
+		, 0
+		, 0
+		, SRCCOPY
+	)) {
 		MessageBoxW(props.hWnd, L"SwapBuffers - Cannot swap buffers!", L"Error", MB_OK|MB_ICONERROR);
 		return E_FAIL;
 	}
@@ -111,7 +112,7 @@ VOID SoftwareRenderer::Project2(Vertex2c &sCoords, const Vertex3 &coords, DWORD 
 }
 
 VOID SoftwareRenderer::Project3(Vertex3c &sCoords, const Vertex3 &coords, DWORD color) {
-	if(coords.z == 0) {
+	if(0 == coords.z) {
 		return;
 	}
 
@@ -144,9 +145,9 @@ HRESULT SoftwareRenderer::Render() {
 	//Matrix4x4::Translate(mWorldInv, -g_Camera.Position().x, -g_Camera.Position().y, -g_Camera.Position().z);
 	//Matrix4x4::Rotate(mWorldInv, -rX, -rY, -rZ);
 
-	rX += 100.0f; if(rX > SINCOSMAX) { rX -= SINCOSMAX; }
-	rY += 50.0f; if(rY > SINCOSMAX) { rY -= SINCOSMAX; }
-	rZ += 25.0f; if(rZ > SINCOSMAX) { rZ -= SINCOSMAX; }
+	rX += 50.0f; if(rX > SINCOSMAX) { rX -= SINCOSMAX; }
+	rY += 25.0f; if(rY > SINCOSMAX) { rY -= SINCOSMAX; }
+	rZ += 12.5f; if(rZ > SINCOSMAX) { rZ -= SINCOSMAX; }
 
 	player.numVisible = 0;
 
@@ -157,10 +158,10 @@ HRESULT SoftwareRenderer::Render() {
 	FLOAT area;
 
 	for(INT i = 0; i < player.numFaces; i++) {
-		//FLOAT dot = Vector3::Dot(g_Camera.Position(), player.polygons[i].normal * mWorldRot);
-		//if(dot > 0.0f) {
-		//	continue;
-		//}
+		/*FLOAT dot = Vector3::Dot(g_Camera.Position(), player.polygons[i].normal * mWorldRot);
+		if(dot > 0.0f) {
+			continue;
+		}*/
 
 		i1 = player.polygons[i].verts[0];
 		i2 = player.polygons[i].verts[1];
@@ -217,6 +218,7 @@ HRESULT SoftwareRenderer::Render() {
 			t.v1 = player.vertices[player.polygons[poly].verts[0]].posProj;
 			t.v2 = player.vertices[player.polygons[poly].verts[1]].posProj;
 			t.v3 = player.vertices[player.polygons[poly].verts[2]].posProj;
+			t.texId = player.textures[0].textureId;
 			
 			//Project3(sv1, player.vertices[i1].posTrans, player.vertices[i1].color);
 			//Project3(sv2, player.vertices[i2].posTrans, player.vertices[i2].color);
@@ -227,7 +229,7 @@ HRESULT SoftwareRenderer::Render() {
 			//	continue;
 			//}
 			
-			DrawTriangle(mBuffer, zBuffer, t);
+			DrawHalfSpaceTriangle(t);
 
 			//DrawTriangle(sBits, zBits, player.vertices[i1].posProj, player.vertices[i2].posProj, player.vertices[i3].posProj);
 			
@@ -270,7 +272,7 @@ HRESULT SoftwareRenderer::SetupGeometry() {
 	player.polygons = new Polygon3[player.numFaces];
 
 	INT j = 0;
-	for(INT i = 0; i <= player.numFaces; ++i) {
+	for(INT i = 0; i < player.numFaces; ++i) {
 		player.polygons[i].verts[0] = indices[j];
 		player.polygons[i].verts[1] = indices[j + 1];
 		player.polygons[i].verts[2] = indices[j + 2];
@@ -286,6 +288,416 @@ HRESULT SoftwareRenderer::SetupGeometry() {
 	return S_OK;
 }
 
+HRESULT SoftwareRenderer::SetupTextures() {
+	int numTextures = sizeof(textureFiles) / sizeof(WCHAR*);
+
+	for(int i = 0; i < numTextures; ++i) {
+		Bitmap *bmp = new Bitmap(textureFiles[i]);
+		
+		textures[i] = bmp;
+	}
+	
+	player.numTexts = sizeof(tIndices) / sizeof(INT);
+	player.textures = new Texture[player.numTexts];
+	for(int i = 0; i < player.numTexts; ++i) {
+		player.textures[i].textureId = tIndices[i];
+	}
+	
+	return S_OK;
+}
+
+VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
+	FLOAT x1, x2, x3, y1, y2, y3;//, z1, z2, z3;
+	FLOAT xx1, xx2, zz1, zz2;
+	FLOAT xxx1, xxx2;
+	//FLOAT z;
+	FLOAT sx1, sx2; //, sz1, sz2;
+	//FLOAT sz;
+	FLOAT dy1, dy2, dy3, dx;
+	LONG startY, endY, startX, endX;
+	FLOAT subX, subY;
+	//FLOAT *zBitsX, *zBitsY;
+	DWORD *dBitsX, *dBitsY;
+	
+	FLOAT *zBits = (FLOAT *)zBuffer.GetBits();
+	DWORD *dBits = (DWORD *)mBuffer.GetBits();
+
+	LONG bOffset;
+	
+	if(t.v1.y > t.v2.y) {
+		SWAP(Vertex3c, t.v1, t.v2);
+	}
+	if(t.v1.y > t.v3.y) {
+		SWAP(Vertex3c, t.v1, t.v3);
+	}
+	if(t.v2.y > t.v3.y) {
+		SWAP(Vertex3c, t.v2, t.v3);
+	}
+	
+	x1 = t.v1.x; y1 = t.v1.y;// z1 = t.v1.z;
+	x2 = t.v2.x; y2 = t.v2.y;// z2 = t.v2.z;
+	x3 = t.v3.x; y3 = t.v3.y;// z3 = t.v3.z;
+	
+	dy1 = y3 - y1;
+	dy2 = y2 - y1;
+	dy3 = y3 - y2;
+
+	if(dy1 != 0.0f) {
+		dy1 = INVERSE(dy1);
+	}
+
+	sx1 = (x3 - x1) * dy1;
+	//sz1 = (z3 - z1) * dy1;
+	
+	xx1 = x1;
+	//zz1 = z1;
+	
+	if(dy2 != 0.0f) {
+		dy2 = INVERSE(dy2);
+
+		sx2 = (x2 - x1) * dy2;
+		//sz2 = (z2 - z1) * dy2;
+
+		xx2 = x1;
+		//zz2 = z1;
+
+		startY = iRound(ceil(y1));
+		endY = iRound(ceil(y2)) - 1;
+		subY = (FLOAT)startY - y1;
+
+		if(startY < 0) {
+			subY -= startY;
+			startY = 0;
+		}
+		if(endY >= height) {
+			endY = height - 1;
+		}
+		
+		bOffset = width * startY;
+		//zBitsY = zBits + bOffset;
+		dBitsY = dBits + bOffset;
+
+		xx1 += sx1 * subY;
+		xx2 += sx2 * subY;
+
+		//zz1 += sz1 * subY;
+		//zz2 += sz2 * subY;
+
+		for(LONG y = startY; y <= endY; ++y) {
+			if(xx2 < xx1) {
+				xxx1 = xx2; xxx2 = xx1;
+				dx = INVERSE(xxx2 - xxx1);
+				//sz = (zz1 - zz2) * dx;
+
+				//z = zz2;
+			} else {
+				xxx1 = xx1; xxx2 = xx2;
+				dx = INVERSE(xxx2 - xxx1);
+				//sz = (zz2 - zz1) * dx;
+				
+				//z = zz1;
+			}
+
+			startX = iRound(ceil(xxx1));
+			endX = iRound(ceil(xxx2)) - 1;
+			subX = (FLOAT)startX - xxx1;
+			
+			if(startX < 0) {
+				subX -= startX;
+				startX = 0;
+			}
+			if(endX >= width) {
+				endX = width - 1;
+			}
+			
+			//z += sz * subX;
+
+			dBitsX = dBitsY + startX;
+			//zBitsX = zBitsY + startX;
+
+			for(LONG x = startX; x <= endX; ++x) {
+				//if(z > *zBitsX) {
+					//*zBitsX = z;
+					*dBitsX = 0x00007F00;
+				//}
+				
+				//z += sz;
+
+				//++zBitsX;
+				++dBitsX;
+			}
+
+			xx1 += sx1;
+			xx2 += sx2;
+
+			//zz1 += sz1;
+			//zz2 += sz2;
+
+			//zBitsY += width;
+			dBitsY += width;
+		}
+	}
+
+	if(dy3 != 0.0f) {
+		dy3 = INVERSE(dy3);
+
+		sx2 = (x3 - x2) * dy3;
+		//sz2 = (z3 - z2) * dy3;
+
+		xx2 = x2;
+		//zz2 = z2;
+
+		startY = iRound(ceil(y2));
+		endY = iRound(ceil(y3)) - 1;
+		subY = (FLOAT)startY - y2;
+
+		if(startY < 0) {
+			subY -= startY;
+			startY = 0;
+		}
+		if(endY >= height) {
+			endY = height - 1;
+		}
+		
+		if(dy2 != 0.0f) {
+			FLOAT dy = y2 - y1;
+
+			xx1 = x1 + (sx1 * dy);
+			//zz1 = z1 + (sz1 * dy);
+		} else {
+			bOffset = width * startY;
+			//zBitsY = zBits + bOffset;
+			dBitsY = dBits + bOffset;
+		}
+		
+		xx1 += sx1 * subY;
+		xx2 += sx2 * subY;
+
+		//zz1 += sz1 * subY;
+		//zz2 += sz2 * subY;
+
+		for(LONG y = startY; y <= endY; ++y) {
+			if(xx2 < xx1) {
+				xxx1 = xx2; xxx2 = xx1;
+				dx = INVERSE(xxx2 - xxx1);
+				//sz = (zz1 - zz2) * dx;
+
+				//z = zz2;
+			} else {
+				xxx1 = xx1; xxx2 = xx2;
+				dx = INVERSE(xxx2 - xxx1);
+				//sz = (zz2 - zz1) * dx;
+
+				//z = zz1;
+			}
+			
+			startX = iRound(ceil(xxx1));
+			endX = iRound(ceil(xxx2)) - 1;
+			subX = (FLOAT)startX - xxx1;
+			
+			if(startX < 0) {
+				subX -= startX;
+				startX = 0;
+			}
+			if(endX >= width) {
+				endX = width - 1;
+			}
+			
+			//z += sz * subX;
+
+			//zBitsX = zBitsY + startX;
+			dBitsX = dBitsY + startX;
+			
+			for(LONG x = startX; x <= endX; ++x) {
+				//if(z > *zBitsX) {
+					//*zBitsX = z;
+					*dBitsX = 0x00007F00;
+				//}
+
+				//z += sz;
+				
+				//++zBitsX;
+				++dBitsX;
+			}
+
+			xx1 += sx1;
+			xx2 += sx2;
+
+			//zz1 += sz1;
+			//zz2 += sz2;
+			
+			//zBitsY += width;
+			dBitsY += width;
+		}
+	}
+}
+
+VOID SoftwareRenderer::DrawHalfSpaceTriangle(Triangle &t) {
+	FLOAT *zBits = (FLOAT *)zBuffer.GetBits();
+	DWORD *dBits = (DWORD *)mBuffer.GetBits();
+	BYTE *tBits = (BYTE *)textures[t.texId] -> data;
+
+    const INT Y1 = iRound(16.0f * t.v1.y);
+	const INT Y2 = iRound(16.0f * t.v2.y);
+	const INT Y3 = iRound(16.0f * t.v3.y);
+
+	const INT X1 = iRound(16.0f * t.v1.x);
+	const INT X2 = iRound(16.0f * t.v2.x);
+	const INT X3 = iRound(16.0f * t.v3.x);
+	
+	const INT q = 8;
+	
+	const INT minx = MAX(0, (MIN(X1, MIN(X2, X3)) + 0xF) >> 4) & ~(q - 1);
+	const INT maxx = MIN(width, (MAX(X1, MAX(X2, X3)) + 0xF) >> 4);
+	const INT miny = MAX(0, (MIN(Y1, MIN(Y2, Y3)) + 0xF) >> 4) & ~(q - 1);
+	const INT maxy = MIN(height, (MAX(Y1, MAX(Y2, Y3)) + 0xF) >> 4);
+	
+	if(maxx < minx || maxy < miny) {
+		return;
+	}
+	
+	const INT dy12 = Y1 - Y2;
+	const INT dy23 = Y2 - Y3;
+	const INT dy31 = Y3 - Y1;
+	
+	const INT dx12 = X1 - X2;
+	const INT dx23 = X2 - X3;
+	const INT dx31 = X3 - X1;
+	
+	const INT fdx12 = dx12 << 4;
+	const INT fdx23 = dx23 << 4;
+	const INT fdx31 = dx31 << 4;
+
+	const INT fdy12 = dy12 << 4;
+	const INT fdy23 = dy23 << 4;
+	const INT fdy31 = dy31 << 4;
+	
+	dBits += miny * width;
+	
+	INT c1 = dy12 * X1 - dx12 * Y1;
+	INT c2 = dy23 * X2 - dx23 * Y2;
+	INT c3 = dy31 * X3 - dx31 * Y3;
+	
+	if(dy12 < 0 || (0 == dy12 && dx12 > 0)) {
+		++c1;
+	}
+	if(dy23 < 0 || (0 == dy23 && dx23 > 0)) {
+		++c2;
+	}
+	if(dy31 < 0 || (0 == dy31 && dx31 > 0)) {
+		++c3;
+	}
+
+	for(INT y = miny; y < maxy; y += q) {
+		INT y0 = y << 4;
+		INT y1 = (y + q - 1) << 4;
+		
+		INT c1dx12y0 = c1 + dx12 * y0;
+		INT c1dx12y1 = c1 + dx12 * y1;
+		INT c2dx23y0 = c2 + dx23 * y0;
+		INT c2dx23y1 = c2 + dx23 * y1;
+		INT c3dx31y0 = c3 + dx31 * y0;
+		INT c3dx31y1 = c3 + dx31 * y1;
+		
+		for(INT x = minx; x < maxx; x += q) {
+			INT x0 = x << 4;
+			INT x1 = (x + q - 1) << 4;
+			
+			INT dy12x0 = dy12 * x0;
+			INT dy12x1 = dy12 * x1;
+			INT cy1 = c1dx12y0 - dy12x0;
+
+			BOOL a00 = cy1 > 0;
+			BOOL a10 = c1dx12y0 - dy12x1 > 0;
+			BOOL a01 = c1dx12y1 - dy12x0 > 0;
+			BOOL a11 = c1dx12y1 - dy12x1 > 0;
+			INT a = (a00 << 0) | (a10 << 1) | (a01 << 2) | (a11 << 3);
+			
+			if(0x0 == a) {
+				continue;
+			}
+			
+			INT dy23x0 = dy23 * x0;
+			INT dy23x1 = dy23 * x1;
+			INT cy2 = c2dx23y0 - dy23x0;
+
+			BOOL b00 = cy2 > 0;
+			BOOL b10 = c2dx23y0 - dy23x1 > 0;
+			BOOL b01 = c2dx23y1 - dy23x0 > 0;
+			BOOL b11 = c2dx23y1 - dy23x1 > 0;
+			INT b = (b00 << 0) | (b10 << 1) | (b01 << 2) | (b11 << 3);
+			
+			if(0x0 == b) {
+				continue;
+			}
+			
+			INT dy31x0 = dy31 * x0;
+			INT dy31x1 = dy31 * x1;
+			INT cy3 = c3dx31y0 - dy31x0;
+
+			BOOL c00 = cy3 > 0;
+			BOOL c10 = c3dx31y0 - dy31x1 > 0;
+			BOOL c01 = c3dx31y1 - dy31x0 > 0;
+			BOOL c11 = c3dx31y1 - dy31x1 > 0;
+			INT c = (c00 << 0) | (c10 << 1) | (c01 << 2) | (c11 << 3);
+			
+			if(0x0 == c) {
+				continue;
+			}
+			
+			DWORD *dBitsX = dBits;
+			BYTE *tBitsX = tBits;
+			
+			if(0xF == a && 0xF == b && 0xF == c) {
+				for(INT iy = 0; iy < q; ++iy) {
+					for(INT ix = x; ix < x + q; ++ix) {
+						int tx = (ix % 64) * 3;
+						BYTE r = tBitsX[tx];
+						BYTE g = tBitsX[tx + 1];
+						BYTE b = tBitsX[tx + 2];
+						DWORD c = RGBAb(r, g, b, 255);
+						dBitsX[ix] = c;
+					}
+
+					dBitsX += width;
+					tBitsX = tBits + ((y + iy) % 64) * 64 * 3;
+				}
+			} else {
+				for(INT iy = 0; iy < q; ++iy) {
+					INT cx1 = cy1;
+					INT cx2 = cy2;
+					INT cx3 = cy3;
+
+					for(INT ix = x; ix < x + q; ++ix) {
+						if(cx1 > 0 && cx2 > 0 && cx3 > 0) {
+							int tx = (ix % 64) * 3;
+							BYTE r = tBitsX[tx];
+							BYTE g = tBitsX[tx + 1];
+							BYTE b = tBitsX[tx + 2];
+							DWORD c = RGBAb(r, g, b, 255);
+							dBitsX[ix] = c;
+						}
+
+						cx1 -= fdy12;
+						cx2 -= fdy23;
+						cx3 -= fdy31;
+					}
+
+					cy1 += fdx12;
+					cy2 += fdx23;
+					cy3 += fdx31;
+
+					dBitsX += width;
+					tBitsX = tBits + ((y + iy) % 64) * 64 * 3;
+				}
+			}
+		}
+
+		dBits += q * width;
+	}
+}
+
+/*
 VOID SoftwareRenderer::DrawLine(Vertex2c &v1, Vertex2c &v2) {
 	DWORD *bits, *cBits;
 	LONG width;
@@ -678,234 +1090,6 @@ VOID SoftwareRenderer::ScanLine(ScanLine2 &data) {
 
 
 
-VOID SoftwareRenderer::DrawTriangle(WinBuffer &dBuffer, Buffer &zBuffer, Triangle &t) {
-	FLOAT x1, x2, x3, y1, y2, y3, z1, z2, z3;
-	FLOAT xx1, xx2, zz1, zz2;
-	FLOAT xxx1, xxx2;
-	FLOAT z;
-	FLOAT sx1, sx2, sz1, sz2;
-	FLOAT sz;
-	FLOAT dy1, dy2, dy3, dx;
-	LONG startY, endY, startX, endX;
-	FLOAT subX, subY;
-	FLOAT *zBitsX, *zBitsY;
-	DWORD *dBitsX, *dBitsY;
-	
-	FLOAT *zBits = (FLOAT *)zBuffer.GetBits();
-	DWORD *dBits = (DWORD *)dBuffer.GetBits();
-	LONG width = dBuffer.GetWidth();
-	LONG height = dBuffer.GetHeight();
-
-	LONG bOffset;
-	
-	if(t.v1.y > t.v2.y) {
-		SWAP(Vertex3c, t.v1, t.v2);
-	}
-	if(t.v1.y > t.v3.y) {
-		SWAP(Vertex3c, t.v1, t.v3);
-	}
-	if(t.v2.y > t.v3.y) {
-		SWAP(Vertex3c, t.v2, t.v3);
-	}
-	
-	x1 = t.v1.x; y1 = t.v1.y; z1 = t.v1.z;
-	x2 = t.v2.x; y2 = t.v2.y; z2 = t.v2.z;
-	x3 = t.v3.x; y3 = t.v3.y; z3 = t.v3.z;
-	
-	dy1 = y3 - y1;
-	dy2 = y2 - y1;
-	dy3 = y3 - y2;
-
-	if(dy1 != 0.0f) {
-		dy1 = INVERSE(dy1);
-	}
-
-	sx1 = (x3 - x1) * dy1;
-	sz1 = (z3 - z1) * dy1;
-	
-	xx1 = x1;
-	zz1 = z1;
-	
-	if(dy2 != 0.0f) {
-		dy2 = INVERSE(dy2);
-
-		sx2 = (x2 - x1) * dy2;
-		sz2 = (z2 - z1) * dy2;
-
-		xx2 = x1;
-		zz2 = z1;
-
-		startY = iRound(ceil(y1));
-		endY = iRound(ceil(y2)) - 1;
-		subY = (FLOAT)startY - y1;
-
-		if(startY < 0) {
-			subY -= startY;
-			startY = 0;
-		}
-		if(endY >= height) {
-			endY = height - 1;
-		}
-		
-		bOffset = width * startY;
-		zBitsY = zBits + bOffset;
-		dBitsY = dBits + bOffset;
-
-		xx1 += sx1 * subY;
-		xx2 += sx2 * subY;
-
-		zz1 += sz1 * subY;
-		zz2 += sz2 * subY;
-
-		for(LONG y = startY; y <= endY; ++y) {
-			if(xx2 < xx1) {
-				xxx1 = xx2; xxx2 = xx1;
-				dx = INVERSE(xxx2 - xxx1);
-				sz = (zz1 - zz2) * dx;
-
-				z = zz2;
-			} else {
-				xxx1 = xx1; xxx2 = xx2;
-				dx = INVERSE(xxx2 - xxx1);
-				sz = (zz2 - zz1) * dx;
-				
-				z = zz1;
-			}
-
-			startX = iRound(ceil(xxx1));
-			endX = iRound(ceil(xxx2)) - 1;
-			subX = (FLOAT)startX - xxx1;
-			
-			if(startX < 0) {
-				subX -= startX;
-				startX = 0;
-			}
-			if(endX >= width) {
-				endX = width - 1;
-			}
-			
-			z += sz * subX;
-
-			dBitsX = dBitsY + startX;
-			zBitsX = zBitsY + startX;
-
-			for(LONG x = startX; x <= endX; ++x) {
-				if(z > *zBitsX) {
-					*zBitsX = z;
-					*dBitsX = 0x00007F00;
-				}
-				
-				z += sz;
-
-				++zBitsX;
-				++dBitsX;
-			}
-
-			xx1 += sx1;
-			xx2 += sx2;
-
-			zz1 += sz1;
-			zz2 += sz2;
-
-			zBitsY += width;
-			dBitsY += width;
-		}
-	}
-
-	if(dy3 != 0.0f) {
-		dy3 = INVERSE(dy3);
-
-		sx2 = (x3 - x2) * dy3;
-		sz2 = (z3 - z2) * dy3;
-
-		xx2 = x2;
-		zz2 = z2;
-
-		startY = iRound(ceil(y2));
-		endY = iRound(ceil(y3)) - 1;
-		subY = (FLOAT)startY - y2;
-
-		if(startY < 0) {
-			subY -= startY;
-			startY = 0;
-		}
-		if(endY >= height) {
-			endY = height - 1;
-		}
-		
-		if(dy2 != 0.0f) {
-			FLOAT dy = y2 - y1;
-
-			xx1 = x1 + (sx1 * dy);
-			zz1 = z1 + (sz1 * dy);
-		} else {
-			bOffset = width * startY;
-			zBitsY = zBits + bOffset;
-			dBitsY = dBits + bOffset;
-		}
-		
-		xx1 += sx1 * subY;
-		xx2 += sx2 * subY;
-
-		zz1 += sz1 * subY;
-		zz2 += sz2 * subY;
-
-		for(LONG y = startY; y <= endY; ++y) {
-			if(xx2 < xx1) {
-				xxx1 = xx2; xxx2 = xx1;
-				dx = INVERSE(xxx2 - xxx1);
-				sz = (zz1 - zz2) * dx;
-
-				z = zz2;
-			} else {
-				xxx1 = xx1; xxx2 = xx2;
-				dx = INVERSE(xxx2 - xxx1);
-				sz = (zz2 - zz1) * dx;
-
-				z = zz1;
-			}
-			
-			startX = iRound(ceil(xxx1));
-			endX = iRound(ceil(xxx2)) - 1;
-			subX = (FLOAT)startX - xxx1;
-			
-			if(startX < 0) {
-				subX -= startX;
-				startX = 0;
-			}
-			if(endX >= width) {
-				endX = width - 1;
-			}
-			
-			z += sz * subX;
-
-			zBitsX = zBitsY + startX;
-			dBitsX = dBitsY + startX;
-			
-			for(LONG x = startX; x <= endX; ++x) {
-				if(z > *zBitsX) {
-					*zBitsX = z;
-					*dBitsX = 0x00007F00;
-				}
-
-				z += sz;
-				
-				++zBitsX;
-				++dBitsX;
-			}
-
-			xx1 += sx1;
-			xx2 += sx2;
-
-			zz1 += sz1;
-			zz2 += sz2;
-			
-			zBitsY += width;
-			dBitsY += width;
-		}
-	}
-}
-
 VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &v1, const Vertex3c &v2, const Vertex3c &v3) {
 	Vertex3c v[3];
 	FLOAT x1, x2, x3, y1, y2, y3, z1, z2, z3;
@@ -953,7 +1137,7 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 	z2 = v[1].z;
 	z3 = v[2].z;
 	
-	/*r1 = (FLOAT)RB(v[0].color);
+	r1 = (FLOAT)RB(v[0].color);
 	r2 = (FLOAT)RB(v[1].color);
 	r3 = (FLOAT)RB(v[2].color);
 	
@@ -967,7 +1151,7 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 	
 	a1 = (FLOAT)AB(v[0].color);
 	a2 = (FLOAT)AB(v[1].color);
-	a3 = (FLOAT)AB(v[2].color);*/
+	a3 = (FLOAT)AB(v[2].color);
 	
 	dy1 = y3 - y1;
 	dy2 = y2 - y1;
@@ -979,34 +1163,34 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 
 	sx1 = (x3 - x1) * dy1;
 	sz1 = (z3 - z1) * dy1;
-	/*sr1 = (r3 - r1) * dy1;
+	sr1 = (r3 - r1) * dy1;
 	sg1 = (g3 - g1) * dy1;
 	sb1 = (b3 - b1) * dy1;
-	sa1 = (a3 - a1) * dy1;*/
+	sa1 = (a3 - a1) * dy1;
 	
 	xx1 = x1;
 	zz1 = z1;
-	/*rr1 = r1;
+	rr1 = r1;
 	gg1 = g1;
 	bb1 = b1;
-	aa1 = a1;*/
+	aa1 = a1;
 
 	if(dy2 != 0.0f) {
 		dy2 = INVERSE(dy2);
 
 		sx2 = (x2 - x1) * dy2;
 		sz2 = (z2 - z1) * dy2;
-		/*sr2 = (r2 - r1) * dy2;
+		sr2 = (r2 - r1) * dy2;
 		sg2 = (g2 - g1) * dy2;
 		sb2 = (b2 - b1) * dy2;
-		sa2 = (a2 - a1) * dy2;*/
+		sa2 = (a2 - a1) * dy2;
 		
 		xx2 = x1;
 		zz2 = z1;
-		/*rr2 = r1;
+		rr2 = r1;
 		gg2 = g1;
 		bb2 = b1;
-		aa2 = a1;*/
+		aa2 = a1;
 
 		startY = (LONG)ceil(y1);
 		endY = (LONG)ceil(y2) - 1;
@@ -1029,7 +1213,7 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 		zz1 += sz1 * subY;
 		zz2 += sz2 * subY;
 		
-		/*rr1 += sr1 * subY;
+		rr1 += sr1 * subY;
 		rr2 += sr2 * subY;
 		
 		gg1 += sg1 * subY;
@@ -1039,7 +1223,7 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 		bb2 += sb2 * subY;
 		
 		aa1 += sa1 * subY;
-		aa2 += sa2 * subY;*/
+		aa2 += sa2 * subY;
 
 		for(LONG y = startY; y <= endY; ++y) {
 			if(xx2 < xx1) {
@@ -1047,31 +1231,31 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 				
 				dx = INVERSE(xxx2 - xxx1);
 				sz = (zz1 - zz2) * dx;
-				/*sr = (rr1 - rr2) * dx;
+				sr = (rr1 - rr2) * dx;
 				sg = (gg1 - gg2) * dx;
 				sb = (bb1 - bb2) * dx;
-				sa = (aa1 - aa2) * dx;*/
+				sa = (aa1 - aa2) * dx;
 				
 				z = zz2;
-				/*r = rr2;
+				r = rr2;
 				g = gg2;
 				b = bb2;
-				a = aa2;*/
+				a = aa2;
 			} else {
 				xxx1 = xx1; xxx2 = xx2;
 				
 				dx = INVERSE(xxx2 - xxx1);
 				sz = (zz2 - zz1) * dx;
-				/*sr = (rr2 - rr1) * dx;
+				sr = (rr2 - rr1) * dx;
 				sg = (gg2 - gg1) * dx;
 				sb = (bb2 - bb1) * dx;
-				sa = (aa2 - aa1) * dx;*/
+				sa = (aa2 - aa1) * dx;
 				
 				z = zz1;
-				/*r = rr1;
+				r = rr1;
 				g = gg1;
 				b = bb1;
-				a = aa1;*/
+				a = aa1;
 			}
 
 			startX = (LONG)ceil(xxx1);
@@ -1087,10 +1271,10 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 			}
 			
 			z += sz * subX;
-			/*r += sr * subX;
+			r += sr * subX;
 			g += sg * subX;
 			b += sb * subX;
-			a += sa * subX;*/
+			a += sa * subX;
 			
 			sBitsX = sBitsY + startX;
 			zBitsX = zBitsY + startX;
@@ -1098,14 +1282,14 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 			for(LONG x = startX; x <= endX; ++x) {
 				if(z > *zBitsX) {
 					*zBitsX = z;
-					*sBitsX = 0x00007F00; //RGBAb((BYTE)r, (BYTE)g, (BYTE)b, (BYTE)a);
+					*sBitsX = RGBAb((BYTE)r, (BYTE)g, (BYTE)b, (BYTE)a);
 				}
 				
 				z += sz;
-				/*r += sr;
+				r += sr;
 				g += sg;
 				b += sb;
-				a += sa;*/
+				a += sa;
 				
 				++zBitsX;
 				++sBitsX;
@@ -1117,7 +1301,7 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 			zz1 += sz1;
 			zz2 += sz2;
 			
-			/*rr1 += sr1;
+			rr1 += sr1;
 			rr2 += sr2;
 			
 			gg1 += sg1;
@@ -1127,7 +1311,7 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 			bb2 += sb2;
 			
 			aa1 += sa1;
-			aa2 += sa2;*/
+			aa2 += sa2;
 			
 			zBitsY += width;
 			sBitsY += width;
@@ -1139,17 +1323,17 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 
 		sx2 = (x3 - x2) * dy3;
 		sz2 = (z3 - z2) * dy3;
-		/*sr2 = (r3 - r2) * dy3;
+		sr2 = (r3 - r2) * dy3;
 		sg2 = (g3 - g2) * dy3;
 		sb2 = (b3 - b2) * dy3;
-		sa2 = (a3 - a2) * dy3;*/
+		sa2 = (a3 - a2) * dy3;
 		
 		xx2 = x2;
 		zz2 = z2;
-		/*rr2 = r2;
+		rr2 = r2;
 		gg2 = g2;
 		bb2 = b2;
-		aa2 = a2;*/
+		aa2 = a2;
 
 		startY = (LONG)ceil(y2);
 		endY = (LONG)ceil(y3) - 1;
@@ -1168,10 +1352,10 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 
 			xx1 = x1 + (sx1 * dy);
 			zz1 = z1 + (sz1 * dy);
-			/*rr1 = r1 + (sr1 * dy);
+			rr1 = r1 + (sr1 * dy);
 			gg1 = g1 + (sg1 * dy);
 			bb1 = b1 + (sb1 * dy);
-			aa1 = a1 + (sa1 * dy);*/
+			aa1 = a1 + (sa1 * dy);
 		} else {
 			zBitsY = zBits + (width * startY);
 			sBitsY = sBits + (width * startY);
@@ -1183,7 +1367,7 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 		zz1 += sz1 * subY;
 		zz2 += sz2 * subY;
 		
-		/*rr1 += sr1 * subY;
+		rr1 += sr1 * subY;
 		rr2 += sr2 * subY;
 		
 		gg1 += sg1 * subY;
@@ -1193,7 +1377,7 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 		bb2 += sb2 * subY;
 		
 		aa1 += sa1 * subY;
-		aa2 += sa2 * subY;*/
+		aa2 += sa2 * subY;
 
 		for(LONG y = startY; y <= endY; ++y) {
 			if(xx2 < xx1) {
@@ -1201,31 +1385,31 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 				
 				dx = INVERSE(xxx2 - xxx1);
 				sz = (zz1 - zz2) * dx;
-				/*sr = (rr1 - rr2) * dx;
+				sr = (rr1 - rr2) * dx;
 				sg = (gg1 - gg2) * dx;
 				sb = (bb1 - bb2) * dx;
-				sa = (aa1 - aa2) * dx;*/
+				sa = (aa1 - aa2) * dx;
 				
 				z = zz2;
-				/*r = rr2;
+				r = rr2;
 				g = gg2;
 				b = bb2;
-				a = aa2;*/
+				a = aa2;
 			} else {
 				xxx1 = xx1; xxx2 = xx2;
 				
 				dx = INVERSE(xxx2 - xxx1);
 				sz = (zz2 - zz1) * dx;
-				/*sr = (rr2 - rr1) * dx;
+				sr = (rr2 - rr1) * dx;
 				sg = (gg2 - gg1) * dx;
 				sb = (bb2 - bb1) * dx;
-				sa = (aa2 - aa1) * dx;*/
+				sa = (aa2 - aa1) * dx;
 				
 				z = zz1;
-				/*r = rr1;
+				r = rr1;
 				g = gg1;
 				b = bb1;
-				a = aa1;*/
+				a = aa1;
 			}
 			
 			startX = (LONG)ceil(xxx1);
@@ -1241,10 +1425,10 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 			}
 			
 			z += sz * subX;
-			/*r += sr * subX;
+			r += sr * subX;
 			g += sg * subX;
 			b += sb * subX;
-			a += sa * subX;*/
+			a += sa * subX;
 			
 			zBitsX = zBitsY + startX;
 			sBitsX = sBitsY + startX;
@@ -1252,14 +1436,14 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 			for(LONG x = startX; x <= endX; ++x) {
 				if(z > *zBitsX) {
 					*zBitsX = z;
-					*sBitsX = 0x00007F00; //RGBAb((BYTE)r, (BYTE)g, (BYTE)b, (BYTE)a);
+					*sBitsX = RGBAb((BYTE)r, (BYTE)g, (BYTE)b, (BYTE)a);
 				}
 
-				//z += sz;
-				/*r += sr;
+				z += sz;
+				r += sr;
 				g += sg;
 				b += sb;
-				a += sa;*/
+				a += sa;
 				
 				++zBitsX;
 				++sBitsX;
@@ -1271,7 +1455,7 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 			zz1 += sz1;
 			zz2 += sz2;
 			
-			/*rr1 += sr1;
+			rr1 += sr1;
 			rr2 += sr2;
 			
 			gg1 += sg1;
@@ -1281,17 +1465,13 @@ VOID SoftwareRenderer::DrawTriangle(DWORD *sBits, FLOAT *zBits, const Vertex3c &
 			bb2 += sb2;
 			
 			aa1 += sa1;
-			aa2 += sa2;*/
+			aa2 += sa2;
 			
 			zBitsY += width;
 			sBitsY += width;
 		}
 	}
 }
-
-
-
-
 
 VOID SoftwareRenderer::DrawTriangle2(DWORD* sBits, FLOAT* zBits, const Vertex3c &v1, const Vertex3c &v2, const Vertex3c &v3) {
 	const INT Y1 = iRound(16.0f * v1.y);
@@ -1446,6 +1626,7 @@ VOID SoftwareRenderer::DrawTriangle2(DWORD* sBits, FLOAT* zBits, const Vertex3c 
 		sBits += q * width;
 	}
 }
+*/
 
 HRESULT SoftwareRenderer::SetSize(DWORD width, DWORD height) {
 	ReleaseBuffer(mBuffer);
@@ -1463,6 +1644,9 @@ HRESULT SoftwareRenderer::SetSize(DWORD width, DWORD height) {
 	) {
 		return E_FAIL;
 	}
+
+    this -> width = (LONG)width;
+    this -> height = (LONG)height;
 
 	RecalcDist();
 
