@@ -47,7 +47,7 @@ public:
 	VOID LoadFromFile(const WCHAR *path);
 	VOID Release();
 
-	BYTE *data;
+	DWORD *data;
 	RGBQUAD *palette;
 	DWORD size;
 	BITMAPFILEHEADER fileHeader;

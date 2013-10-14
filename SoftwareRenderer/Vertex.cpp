@@ -2,9 +2,9 @@
 
 const Vertex3 Vertex3::operator +(const Vertex3 &v) {
 	Vertex3 res = {
-		x + v.x,
-		y + v.y,
-		z + v.z,
+		x + v.x
+		, y + v.y
+		, z + v.z
 	};
 
 	return res;
@@ -12,9 +12,9 @@ const Vertex3 Vertex3::operator +(const Vertex3 &v) {
 
 const Vertex3 Vertex3::operator -(const Vertex3 &v) {
 	Vertex3 res = {
-		x - v.x,
-		y - v.y,
-		z - v.z,
+		x - v.x
+		, y - v.y
+		, z - v.z
 	};
 
 	return res;
@@ -22,9 +22,9 @@ const Vertex3 Vertex3::operator -(const Vertex3 &v) {
 
 const Vertex3 Vertex3::operator *(const Vertex3 &v) {
 	Vertex3 res = {
-		x * v.x,
-		y * v.y,
-		z * v.z,
+		x * v.x
+		, y * v.y
+		, z * v.z
 	};
 
 	return res;
@@ -32,9 +32,9 @@ const Vertex3 Vertex3::operator *(const Vertex3 &v) {
 
 const Vertex3 Vertex3::operator /(const Vertex3 &v) {
 	Vertex3 res = {
-		x / v.x,
-		y / v.y,
-		z / v.z,
+		x / v.x
+		, y / v.y
+		, z / v.z
 	};
 
 	return res;
@@ -42,9 +42,9 @@ const Vertex3 Vertex3::operator /(const Vertex3 &v) {
 
 const Vertex3 Vertex3::operator *(const FLOAT num) {
 	Vertex3 res = {
-		x * num,
-		y * num,
-		z * num,
+		x * num
+		, y * num
+		, z * num
 	};
 
 	return res;
@@ -52,9 +52,9 @@ const Vertex3 Vertex3::operator *(const FLOAT num) {
 
 const Vertex3 Vertex3::operator /(const FLOAT num) {
 	Vertex3 res = {
-		x / num,
-		y / num,
-		z / num,
+		x / num
+		, y / num
+		, z / num
 	};
 
 	return res;

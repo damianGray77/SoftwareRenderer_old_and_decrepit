@@ -94,7 +94,9 @@ VOID SoftwareRenderer::SetClip(LONG cNear, LONG cFar) {
 }
 
 VOID SoftwareRenderer::RecalcDist() {
-	FLOAT cotFOV = COS(fov / 2) / SIN(fov / 2);
+	FLOAT midFOV = fov * 0.5f;
+	FLOAT cotFOV = COS(midFOV) * INVSIN(midFOV);
+	
 	dist = cotFOV * mBuffer.GetMidHeight();
 }
 
@@ -123,6 +125,29 @@ VOID SoftwareRenderer::Project3(Vertex3c &sCoords, const Vertex3 &coords, DWORD 
 	sCoords.z = coords.z;
 
 	sCoords.color = color;
+}
+
+VOID SoftwareRenderer::Project4(const INT i) {
+	Vertex3c &sCoords = player.vertices[i].posProj;
+	Vertex3 &coords = player.vertices[i].posTrans;
+	const Vertex2 &uvMap = player.vertices[i].uvMap;
+	DWORD color = player.vertices[i].color;
+	
+	coords = player.vertices[i].position * mWorld;
+	
+	if(0 == coords.z) {
+		return;
+	}
+
+	FLOAT z = INVERSE(coords.z) * dist;
+
+	sCoords.x = (coords.x * z) + mBuffer.GetMidWidth();
+	sCoords.y = (-coords.y * z) + mBuffer.GetMidHeight();
+	sCoords.z = coords.z;
+
+	sCoords.color = color;
+	sCoords.u = uvMap.x;
+	sCoords.v = uvMap.y;
 }
 
 VOID SoftwareRenderer::Clear(DWORD color) {
@@ -166,14 +191,18 @@ HRESULT SoftwareRenderer::Render() {
 		i1 = player.polygons[i].verts[0];
 		i2 = player.polygons[i].verts[1];
 		i3 = player.polygons[i].verts[2];
+		
+		Project4(i1);
+		Project4(i2);
+		Project4(i3);
 
-		player.vertices[i1].posTrans = player.vertices[i1].position * mWorld;
+		/*player.vertices[i1].posTrans = player.vertices[i1].position * mWorld;
 		player.vertices[i2].posTrans = player.vertices[i2].position * mWorld;
 		player.vertices[i3].posTrans = player.vertices[i3].position * mWorld;
 		
 		Project3(player.vertices[i1].posProj, player.vertices[i1].posTrans, player.vertices[i1].color);
 		Project3(player.vertices[i2].posProj, player.vertices[i2].posTrans, player.vertices[i2].color);
-		Project3(player.vertices[i3].posProj, player.vertices[i3].posTrans, player.vertices[i3].color);
+		Project3(player.vertices[i3].posProj, player.vertices[i3].posTrans, player.vertices[i3].color);*/
 		
 		sv1 = player.vertices[i1].posProj;
 		sv2 = player.vertices[i2].posProj;
@@ -229,7 +258,7 @@ HRESULT SoftwareRenderer::Render() {
 			//	continue;
 			//}
 			
-			DrawHalfSpaceTriangle(t);
+			DrawScanLineTriangle(t);
 
 			//DrawTriangle(sBits, zBits, player.vertices[i1].posProj, player.vertices[i2].posProj, player.vertices[i3].posProj);
 			
@@ -307,63 +336,157 @@ HRESULT SoftwareRenderer::SetupTextures() {
 }
 
 VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
-	FLOAT x1, x2, x3, y1, y2, y3;//, z1, z2, z3;
-	FLOAT xx1, xx2, zz1, zz2;
-	FLOAT xxx1, xxx2;
-	//FLOAT z;
-	FLOAT sx1, sx2; //, sz1, sz2;
-	//FLOAT sz;
-	FLOAT dy1, dy2, dy3, dx;
-	LONG startY, endY, startX, endX;
-	FLOAT subX, subY;
-	//FLOAT *zBitsX, *zBitsY;
-	DWORD *dBitsX, *dBitsY;
+	if(t.v1.y > t.v2.y) { SWAP(Vertex3c, t.v1, t.v2); }
+	if(t.v1.y > t.v3.y) { SWAP(Vertex3c, t.v1, t.v3); }
+	if(t.v2.y > t.v3.y) { SWAP(Vertex3c, t.v2, t.v3); }
 	
+	if(t.v3.y <= t.v1.y) {
+		return;
+	}
+	
+	BOOL swapX = FALSE;
+
 	FLOAT *zBits = (FLOAT *)zBuffer.GetBits();
 	DWORD *dBits = (DWORD *)mBuffer.GetBits();
-
-	LONG bOffset;
+	DWORD *tBits = (DWORD *)textures[t.texId] -> data;
 	
-	if(t.v1.y > t.v2.y) {
-		SWAP(Vertex3c, t.v1, t.v2);
+	const INT tWidth = textures[t.texId] -> infoHeader.biWidth;
+	const INT tHeight = textures[t.texId] -> infoHeader.biHeight;
+	
+	const FLOAT x1 = t.v1.x, y1 = t.v1.y, z1 = t.v1.z, u1 = t.v1.u * tWidth, v1 = t.v1.v * tHeight;
+	const FLOAT x2 = t.v2.x, y2 = t.v2.y, z2 = t.v2.z, u2 = t.v2.u * tWidth, v2 = t.v2.v * tHeight;
+	const FLOAT x3 = t.v3.x, y3 = t.v3.y, z3 = t.v3.z, u3 = t.v3.u * tWidth, v3 = t.v3.v * tHeight;
+	
+	const FLOAT dy1 = INVERSE(y3 - y1);
+	FLOAT sx1 = (x3 - x1) * dy1;
+	FLOAT sz1 = (z3 - z1) * dy1;
+	FLOAT su1 = (u3 - u1) * dy1;
+	FLOAT sv1 = (v3 - v1) * dy1;
+	
+	FLOAT xx1 = x1, zz1 = z1;
+	FLOAT uu1 = u1, vv1 = v1;
+	
+	if(y2 != y1) {
+		const FLOAT dy2 = INVERSE(y2 - y1);
+		FLOAT sx2 = (x2 - x1) * dy2;
+		FLOAT sz2 = (z2 - z1) * dy2;
+		FLOAT su2 = (u2 - u1) * dy2;
+		FLOAT sv2 = (v2 - v1) * dy2;
+		
+		FLOAT xx2 = x1, zz2 = z1;
+		FLOAT uu2 = u2, vv2 = v2;
+
+		INT startY = iRound(ceil(y1));
+		INT endY = iRound(ceil(y2)) - 1;
+		FLOAT subY = (FLOAT)startY - y1;
+
+		if(startY < 0) {
+			subY -= startY;
+			startY = 0;
+		}
+		if(endY >= height) {
+			endY = height - 1;
+		}
+
+		xx1 += sx1 * subY; xx2 += sx2 * subY;
+		zz1 += sz1 * subY; zz2 += sz2 * subY;
+		uu1 += su1 * subY; uu2 += su2 * subY;
+		vv1 += sv1 * subY; vv2 += sv2 * subY;
+		
+		if(sx2 < sx1) {
+			SWAP(FLOAT, xx1, xx2);
+			SWAP(FLOAT, sx1, sx2);
+			
+			SWAP(FLOAT, zz1, zz2);
+			SWAP(FLOAT, sz1, sz2);
+			
+			SWAP(FLOAT, uu1, uu2);
+			SWAP(FLOAT, su1, su2);
+			
+			SWAP(FLOAT, vv1, vv2);
+			SWAP(FLOAT, sv1, sv2);
+			
+			swapX = TRUE;
+		}
+		
+		for(INT y = startY; y <= endY; ++y) {
+			const FLOAT dx = INVERSE(xx2 - xx1);
+			
+			FLOAT szx = (zz1 - zz2) * dx;
+			FLOAT sux = (uu1 - uu2) * dx;
+			FLOAT svx = (vv1 - vv2) * dx;
+			
+			FLOAT zx = zz2;
+			FLOAT ux = uu2;
+			FLOAT vx = vv2;
+
+			INT startX = iRound(ceil(xx1));
+			INT endX = iRound(ceil(xx2)) - 1;
+			FLOAT subX = (FLOAT)startX - xx1;
+			
+			if(startX < 0) {
+				subX -= startX;
+				startX = 0;
+			}
+			if(endX >= width) {
+				endX = width - 1;
+			}
+			endX -= startX;
+			
+			zx += szx * subX;
+			ux += sux * subX;
+			vx += svx * subX;
+			
+			LONG offset = (y * width) + startX;
+			FLOAT *zBitsX = zBits + offset;
+			DWORD *dBitsX = dBits + offset;
+			
+			for(INT x = 0; x <= endX; ++x) {
+				if(zx > zBitsX[x]) {
+					zBitsX[x] = zx;
+					LONG tOffset = ((INT)ux % tWidth) + (tWidth * ((INT)vx % tHeight));
+					dBitsX[x] = tBits[tOffset];
+				}
+				
+				zx += szx;
+				ux += sux;
+				vx += svx;
+			}
+
+			xx1 += sx1; xx2 += sx2;
+			zz1 += sz1; zz2 += sz2;
+			uu1 += su1; uu2 += su2;
+			vv1 += sv1; vv2 += sv2;
+		}
+		
+		if(TRUE == swapX) {
+			SWAP(FLOAT, xx1, xx2);
+			SWAP(FLOAT, sx1, sx2);
+			
+			SWAP(FLOAT, zz1, zz2);
+			SWAP(FLOAT, sz1, sz2);
+			
+			SWAP(FLOAT, uu1, uu2);
+			SWAP(FLOAT, su1, su2);
+			
+			SWAP(FLOAT, vv1, vv2);
+			SWAP(FLOAT, sv1, sv2);
+		}
 	}
-	if(t.v1.y > t.v3.y) {
-		SWAP(Vertex3c, t.v1, t.v3);
-	}
-	if(t.v2.y > t.v3.y) {
-		SWAP(Vertex3c, t.v2, t.v3);
-	}
-	
-	x1 = t.v1.x; y1 = t.v1.y;// z1 = t.v1.z;
-	x2 = t.v2.x; y2 = t.v2.y;// z2 = t.v2.z;
-	x3 = t.v3.x; y3 = t.v3.y;// z3 = t.v3.z;
-	
-	dy1 = y3 - y1;
-	dy2 = y2 - y1;
-	dy3 = y3 - y2;
 
-	if(dy1 != 0.0f) {
-		dy1 = INVERSE(dy1);
-	}
+	if(y3 != y2) {
+		const FLOAT dy3 = INVERSE(y3 - y2);
+		FLOAT sx2 = (x3 - x2) * dy3;
+		FLOAT sz2 = (z3 - z2) * dy3;
+		FLOAT su2 = (u3 - u2) * dy3;
+		FLOAT sv2 = (v3 - v2) * dy3;
+		
+		FLOAT xx2 = x2, zz2 = z2;
+		FLOAT uu2 = u2, vv2 = v2;
 
-	sx1 = (x3 - x1) * dy1;
-	//sz1 = (z3 - z1) * dy1;
-	
-	xx1 = x1;
-	//zz1 = z1;
-	
-	if(dy2 != 0.0f) {
-		dy2 = INVERSE(dy2);
-
-		sx2 = (x2 - x1) * dy2;
-		//sz2 = (z2 - z1) * dy2;
-
-		xx2 = x1;
-		//zz2 = z1;
-
-		startY = iRound(ceil(y1));
-		endY = iRound(ceil(y2)) - 1;
-		subY = (FLOAT)startY - y1;
+		INT startY = iRound(ceil(y2));
+		INT endY = iRound(ceil(y3)) - 1;
+		FLOAT subY = (FLOAT)startY - y2;
 
 		if(startY < 0) {
 			subY -= startY;
@@ -373,34 +496,48 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			endY = height - 1;
 		}
 		
-		bOffset = width * startY;
-		//zBitsY = zBits + bOffset;
-		dBitsY = dBits + bOffset;
+		if(y2 != y1) {
+			FLOAT dy = y2 - y1;
 
-		xx1 += sx1 * subY;
-		xx2 += sx2 * subY;
+			xx1 = x1 + (sx1 * dy);
+			zz1 = z1 + (sz1 * dy);
+			uu1 = u1 + (su1 * dy);
+			vv1 = v1 + (sv1 * dy);
+		}
+		
+		xx1 += sx1 * subY; xx2 += sx2 * subY;
+		zz1 += sz1 * subY; zz2 += sz2 * subY;
+		uu1 += su1 * subY; uu2 += su2 * subY;
+		vv1 += sv1 * subY; vv2 += sv2 * subY;
+		
+		if(TRUE == swapX) {
+			SWAP(FLOAT, xx1, xx2);
+			SWAP(FLOAT, sx1, sx2);
+			
+			SWAP(FLOAT, zz1, zz2);
+			SWAP(FLOAT, sz1, sz2);
+			
+			SWAP(FLOAT, uu1, uu2);
+			SWAP(FLOAT, su1, su2);
+			
+			SWAP(FLOAT, vv1, vv2);
+			SWAP(FLOAT, sv1, sv2);
+		}
 
-		//zz1 += sz1 * subY;
-		//zz2 += sz2 * subY;
-
-		for(LONG y = startY; y <= endY; ++y) {
-			if(xx2 < xx1) {
-				xxx1 = xx2; xxx2 = xx1;
-				dx = INVERSE(xxx2 - xxx1);
-				//sz = (zz1 - zz2) * dx;
-
-				//z = zz2;
-			} else {
-				xxx1 = xx1; xxx2 = xx2;
-				dx = INVERSE(xxx2 - xxx1);
-				//sz = (zz2 - zz1) * dx;
-				
-				//z = zz1;
-			}
-
-			startX = iRound(ceil(xxx1));
-			endX = iRound(ceil(xxx2)) - 1;
-			subX = (FLOAT)startX - xxx1;
+		for(INT y = startY; y <= endY; ++y) {
+			const FLOAT dx = INVERSE(xx2 - xx1);
+			
+			FLOAT szx = (zz1 - zz2) * dx;
+			FLOAT sux = (uu1 - uu2) * dx;
+			FLOAT svx = (vv1 - vv2) * dx;
+			
+			FLOAT zx = zz2;
+			FLOAT ux = uu2;
+			FLOAT vx = vv2;
+			
+			INT startX = iRound(ceil(xx1));
+			INT endX = iRound(ceil(xx2)) - 1;
+			FLOAT subX = (FLOAT)startX - xx1;
 			
 			if(startX < 0) {
 				subX -= startX;
@@ -409,44 +546,127 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			if(endX >= width) {
 				endX = width - 1;
 			}
+			endX -= startX;
 			
-			//z += sz * subX;
+			zx += szx * subX;
+			ux += sux * subX;
+			vx += svx * subX;
+			
+			LONG offset = (y * width) + startX;
+			FLOAT *zBitsX = zBits + offset;
+			DWORD *dBitsX = dBits + offset;
+			
+			for(INT x = 0; x <= endX; ++x) {
+				if(zx > zBitsX[x]) {
+					zBitsX[x] = zx;
+					LONG tOffset = ((INT)ux % tWidth) + (tWidth * ((INT)vx % tHeight));
+					dBitsX[x] = tBits[tOffset];
+				}
+
+				zx += szx;
+				ux += sux;
+				vx += svx;
+			}
+
+			xx1 += sx1; xx2 += sx2;
+			zz1 += sz1; zz2 += sz2;
+			uu1 += uu1; uu2 += uu2;
+			vv1 += vv1; vv2 += vv2;
+		}
+	}
+}
+
+/*VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
+	INT startY, endY;
+	INT startX, endX;
+	FLOAT subY, subX;
+	
+	FLOAT xx1, xx2;
+	FLOAT dx;
+	
+	if(t.v1.y > t.v2.y) { SWAP(Vertex3c, t.v1, t.v2); }
+	if(t.v1.y > t.v3.y) { SWAP(Vertex3c, t.v1, t.v3); }
+	if(t.v2.y > t.v3.y) { SWAP(Vertex3c, t.v2, t.v3); }
+	
+	if(t.v3.y <= t.v1.y) {
+		return;
+	}
+
+	DWORD *dBitsX, *dBitsY;
+
+	DWORD *dBits = (DWORD *)mBuffer.GetBits();
+	
+	const FLOAT x1 = t.v1.x, y1 = t.v1.y;
+	const FLOAT x2 = t.v2.x, y2 = t.v2.y;
+	const FLOAT x3 = t.v3.x, y3 = t.v3.y;
+	
+	const FLOAT dy1 = y3 - y1;
+	const FLOAT sx1 = (x3 - x1) / dy1;
+	
+	if(y1 != y2) {
+		const FLOAT dy2 = y2 - y1;
+		const FLOAT sx2 = (x2 - x1) / dy2;
+		
+		xx1 = x1;
+		xx2 = x1;
+		
+		startY = iRound(ceil(y1));
+		endY = iRound(ceil(y2)) - 1;
+		subY = (FLOAT)startY - y1;
+		
+		if(startY < 0) {
+			subY -= startY;
+			startY = 0;
+		}
+		if(endY >= height) {
+			endY = height - 1;
+		}
+		endY -= startY;
+		
+		dBitsY = dBits + width * startY;
+		
+		xx1 += sx1 * subY;
+		xx2 += sx2 * subY;
+		
+		if(xx2 < xx1 || xx2 + (endY * sx2) < xx1 + (endY * sx1)) {
+			SWAP(FLOAT, xx1, xx2);
+			SWAP(FLOAT, sx1, sx2);
+		}
+
+		for(INT y = 0; y <= endY; ++y) {
+			startX = iRound(ceil(xx1));
+			endX = iRound(ceil(xx2)) - 1;
+			subX = (FLOAT)startX - xx1;
+			
+			if(startX < 0) {
+				subX -= startX;
+				startX = 0;
+			}
+			if(endX >= width) {
+				endX = width - 1;
+			}
+			endX -= startX;
 
 			dBitsX = dBitsY + startX;
-			//zBitsX = zBitsY + startX;
 
-			for(LONG x = startX; x <= endX; ++x) {
-				//if(z > *zBitsX) {
-					//*zBitsX = z;
-					*dBitsX = 0x00007F00;
-				//}
-				
-				//z += sz;
-
-				//++zBitsX;
-				++dBitsX;
+			for(INT x = 0; x <= endX; ++x) {
+				dBitsX[x] = 0x00007F00;
 			}
 
 			xx1 += sx1;
 			xx2 += sx2;
 
-			//zz1 += sz1;
-			//zz2 += sz2;
-
-			//zBitsY += width;
 			dBitsY += width;
 		}
 	}
+	
+	if(y3 != y2) {
+		const FLOAT dy3 = y3 - y2;
+		const FLOAT sx3 = (x3 - x2) / dy3;
 
-	if(dy3 != 0.0f) {
-		dy3 = INVERSE(dy3);
-
-		sx2 = (x3 - x2) * dy3;
-		//sz2 = (z3 - z2) * dy3;
-
+		xx1 = x1;
 		xx2 = x2;
-		//zz2 = z2;
-
+		
 		startY = iRound(ceil(y2));
 		endY = iRound(ceil(y3)) - 1;
 		subY = (FLOAT)startY - y2;
@@ -458,42 +678,26 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 		if(endY >= height) {
 			endY = height - 1;
 		}
+		endY -= startY;
 		
-		if(dy2 != 0.0f) {
-			FLOAT dy = y2 - y1;
-
-			xx1 = x1 + (sx1 * dy);
-			//zz1 = z1 + (sz1 * dy);
+		if(y1 != y2) {
+			xx1 += sx1 * (y2 - y1);
 		} else {
-			bOffset = width * startY;
-			//zBitsY = zBits + bOffset;
-			dBitsY = dBits + bOffset;
+			dBitsY = dBits + width * startY;
 		}
 		
 		xx1 += sx1 * subY;
-		xx2 += sx2 * subY;
+		xx2 += sx3 * subY;
+		
+		if(xx2 < xx1 || xx2 + (endY * sx3) < xx1 + (endY * sx1)) {
+			SWAP(FLOAT, xx1, xx2);
+			SWAP(FLOAT, sx1, sx3);
+		}
 
-		//zz1 += sz1 * subY;
-		//zz2 += sz2 * subY;
-
-		for(LONG y = startY; y <= endY; ++y) {
-			if(xx2 < xx1) {
-				xxx1 = xx2; xxx2 = xx1;
-				dx = INVERSE(xxx2 - xxx1);
-				//sz = (zz1 - zz2) * dx;
-
-				//z = zz2;
-			} else {
-				xxx1 = xx1; xxx2 = xx2;
-				dx = INVERSE(xxx2 - xxx1);
-				//sz = (zz2 - zz1) * dx;
-
-				//z = zz1;
-			}
-			
-			startX = iRound(ceil(xxx1));
-			endX = iRound(ceil(xxx2)) - 1;
-			subX = (FLOAT)startX - xxx1;
+		for(INT y = 0; y <= endY; ++y) {
+			startX = iRound(ceil(xx1));
+			endX = iRound(ceil(xx2)) - 1;
+			subX = (FLOAT)startX - xx1;
 			
 			if(startX < 0) {
 				subX -= startX;
@@ -502,48 +706,38 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			if(endX >= width) {
 				endX = width - 1;
 			}
+			endX -= startX;
 			
-			//z += sz * subX;
-
-			//zBitsX = zBitsY + startX;
 			dBitsX = dBitsY + startX;
 			
-			for(LONG x = startX; x <= endX; ++x) {
-				//if(z > *zBitsX) {
-					//*zBitsX = z;
-					*dBitsX = 0x00007F00;
-				//}
-
-				//z += sz;
-				
-				//++zBitsX;
-				++dBitsX;
+			for(INT x = 0; x <= endX; ++x) {
+				dBitsX[x] = 0x00007F00;
 			}
 
 			xx1 += sx1;
-			xx2 += sx2;
+			xx2 += sx3;
 
-			//zz1 += sz1;
-			//zz2 += sz2;
-			
-			//zBitsY += width;
 			dBitsY += width;
 		}
 	}
 }
-
+*/
 VOID SoftwareRenderer::DrawHalfSpaceTriangle(Triangle &t) {
 	FLOAT *zBits = (FLOAT *)zBuffer.GetBits();
 	DWORD *dBits = (DWORD *)mBuffer.GetBits();
-	BYTE *tBits = (BYTE *)textures[t.texId] -> data;
-
-    const INT Y1 = iRound(16.0f * t.v1.y);
-	const INT Y2 = iRound(16.0f * t.v2.y);
-	const INT Y3 = iRound(16.0f * t.v3.y);
+	DWORD *tBits = (DWORD *)textures[t.texId] -> data;
 
 	const INT X1 = iRound(16.0f * t.v1.x);
 	const INT X2 = iRound(16.0f * t.v2.x);
 	const INT X3 = iRound(16.0f * t.v3.x);
+	
+	const INT Y1 = iRound(16.0f * t.v1.y);
+	const INT Y2 = iRound(16.0f * t.v2.y);
+	const INT Y3 = iRound(16.0f * t.v3.y);
+	
+	const INT Z1 = iRound(16.0f * t.v1.z);
+	const INT Z2 = iRound(16.0f * t.v2.z);
+	const INT Z3 = iRound(16.0f * t.v3.z);
 	
 	const INT q = 8;
 	
@@ -551,6 +745,8 @@ VOID SoftwareRenderer::DrawHalfSpaceTriangle(Triangle &t) {
 	const INT maxx = MIN(width, (MAX(X1, MAX(X2, X3)) + 0xF) >> 4);
 	const INT miny = MAX(0, (MIN(Y1, MIN(Y2, Y3)) + 0xF) >> 4) & ~(q - 1);
 	const INT maxy = MIN(height, (MAX(Y1, MAX(Y2, Y3)) + 0xF) >> 4);
+	const INT minz = MIN(Z1, MIN(Z2, Z3));
+	const INT maxz = MAX(Z1, MAX(Z2, Z3));
 	
 	if(maxx < minx || maxy < miny) {
 		return;
@@ -646,36 +842,31 @@ VOID SoftwareRenderer::DrawHalfSpaceTriangle(Triangle &t) {
 			}
 			
 			DWORD *dBitsX = dBits;
-			BYTE *tBitsX = tBits;
-			
+			DWORD *tBitsX = tBits + ((y * 64) % 4096);
+			if(tBitsX >= tBits + 4096) { tBitsX -= 4096; }
 			if(0xF == a && 0xF == b && 0xF == c) {
-				for(INT iy = 0; iy < q; ++iy) {
-					for(INT ix = x; ix < x + q; ++ix) {
-						int tx = (ix % 64) * 3;
-						BYTE r = tBitsX[tx];
-						BYTE g = tBitsX[tx + 1];
-						BYTE b = tBitsX[tx + 2];
-						DWORD c = RGBAb(r, g, b, 255);
-						dBitsX[ix] = c;
+				for(INT iy = y, iyq = y + q; iy < iyq; ++iy) {
+					for(INT ix = x, ixq = x + q; ix < ixq; ++ix) {
+						int tx = 63 - (ix % 64);
+
+						dBitsX[ix] = tBitsX[tx];
 					}
 
 					dBitsX += width;
-					tBitsX = tBits + ((y + iy) % 64) * 64 * 3;
+					tBitsX += 64;
+					if(tBitsX >= tBits + 4096) { tBitsX -= 4096; }
 				}
 			} else {
-				for(INT iy = 0; iy < q; ++iy) {
-					INT cx1 = cy1;
-					INT cx2 = cy2;
-					INT cx3 = cy3;
+				for(INT iy = y, iyq = y + q; iy < iyq; ++iy) {
+					INT cx1 = cy1 - 1;
+					INT cx2 = cy2 - 1;
+					INT cx3 = cy3 - 1;
 
-					for(INT ix = x; ix < x + q; ++ix) {
-						if(cx1 > 0 && cx2 > 0 && cx3 > 0) {
-							int tx = (ix % 64) * 3;
-							BYTE r = tBitsX[tx];
-							BYTE g = tBitsX[tx + 1];
-							BYTE b = tBitsX[tx + 2];
-							DWORD c = RGBAb(r, g, b, 255);
-							dBitsX[ix] = c;
+					for(INT ix = x, ixq = x + q; ix < ixq; ++ix) {
+						if((cx1 | cx2 | cx3) >= 0) {
+							int tx = 63 - (ix % 64);
+							
+							dBitsX[ix] = tBitsX[tx];
 						}
 
 						cx1 -= fdy12;
@@ -688,7 +879,8 @@ VOID SoftwareRenderer::DrawHalfSpaceTriangle(Triangle &t) {
 					cy3 += fdx31;
 
 					dBitsX += width;
-					tBitsX = tBits + ((y + iy) % 64) * 64 * 3;
+					tBitsX += 64;
+					if(tBitsX >= tBits + 4096) { tBitsX -= 4096; }
 				}
 			}
 		}

@@ -64,6 +64,7 @@ public:
 	VOID RecalcDist();
 	VOID Project2(Vertex2c &sCoords, const Vertex3 &coords, DWORD color);
 	VOID Project3(Vertex3c &sCoords, const Vertex3 &coords, DWORD color);
+	VOID Project4(const INT i);
 	VOID Clear(DWORD color);
 	HRESULT Render();
 	HRESULT SetupGeometry();

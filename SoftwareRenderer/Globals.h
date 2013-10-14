@@ -19,6 +19,8 @@ typedef double DOUBLE;
 
 #define SIN(x) (sinTbl[(INT)x&SINCOSMAX])
 #define COS(x) (cosTbl[(INT)x&SINCOSMAX])
+#define INVSIN(x) (invSinTbl[(INT)x&SINCOSMAX])
+#define INVCOS(x) (invCosTbl[(INT)x&SINCOSMAX]) 
 #define ABS(x) ((x) < 0 ? -(x) : (x))
 #define SGN(x) ((x) < 0 ? -1 : (x) > 0 ? 1 : 0)
 #define INVERSE(x) ((1.0f) / (x))
@@ -44,6 +46,9 @@ DWORD RGBAf(FLOAT r, FLOAT g, FLOAT b, FLOAT a);
 
 extern FLOAT sinTbl[SINCOSMAX];
 extern FLOAT cosTbl[SINCOSMAX];
+extern FLOAT invSinTbl[SINCOSMAX];
+extern FLOAT invCosTbl[SINCOSMAX];
+extern BOOL paused;
 
 float inverseSqrt(float number);
 

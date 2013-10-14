@@ -58,10 +58,16 @@ VOID ChangeToFullScreen() {
 VOID InitSinCos() {
 	DOUBLE val;
 	
+	DOUBLE valMultiplier = PI / (SINCOSMAX * 0.5f);
+	
 	for(INT i = 0; i < SINCOSMAX; ++i) {
-		val = i * PI / (SINCOSMAX / 2.0);
+		val = i * valMultiplier;
+		
 		sinTbl[i] = (FLOAT)sin(val);
+		invSinTbl[i] = 1.0f / sinTbl[i];
+		
 		cosTbl[i] = (FLOAT)cos(val);
+		invCosTbl[i] = 1.0f / cosTbl[i];
 	}
 }
 
@@ -117,6 +123,10 @@ WPARAM MainLoop() {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         } else {
+			if(TRUE == paused) {
+				continue;
+			}
+			
 			//if(ClampFrameRate(60)) {
 				g_Camera.Update();
 				if(FAILED(g_3D -> Render())) {
@@ -175,8 +185,8 @@ LRESULT WINAPI MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch(msg) {
 		case WM_SIZE:
 			if(!props.fullScreen) {
-				UINT width = LOWORD(lParam) < 50 ? 50 : LOWORD(lParam);
-				UINT height = HIWORD(lParam) < 50 ? 50 : HIWORD(lParam);
+				UINT width = (LOWORD(lParam) < 64 ? 64 : LOWORD(lParam)) + (LOWORD(lParam) % 4);
+				UINT height = (HIWORD(lParam) < 64 ? 64 : HIWORD(lParam)) + (HIWORD(lParam) % 4);
 				
 				g_3D -> SetSize(width, height);
 			}
@@ -193,8 +203,13 @@ LRESULT WINAPI MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
           //return 0;
 		case WM_KEYDOWN:
-			if(wParam == VK_ESCAPE) {
-				SendMessage(hWnd, WM_CLOSE, 0, 0);
+			switch(wParam) {
+				case VK_ESCAPE:
+					SendMessage(hWnd, WM_CLOSE, 0, 0);
+					break;
+				case VK_SPACE:
+					paused = !paused;
+					break;
 			}
 			
 			return 0;

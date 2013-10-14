@@ -92,7 +92,7 @@ struct PVertex3c {
 			{ v2.x, v2.y, v2.z, }
 			, { 0.0f, 0.0f, 0.0f }
 			, { 0.0f, 0.0f, 0.0f }
-			, { 0.0f, 0.0f }
+			, { v2.u, v2.v }
 			, { 0.0f, 0.0f, 0.0f }
 			, v2.color
 		};

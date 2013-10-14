@@ -44,9 +44,9 @@ HRESULT WinBuffer::Init(HDC dc, DWORD w, DWORD h) {
 	dibDC = dc;
 
 	width = w;
-	mWidth = w / 2;
+	mWidth = w * 0.5f;
 	height = h;
-	mHeight = h / 2;
+	mHeight = h * 0.5f;
 
 	return S_OK;
 }

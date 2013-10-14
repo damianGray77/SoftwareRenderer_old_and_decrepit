@@ -14,6 +14,10 @@ DWORD RGBAf(FLOAT r, FLOAT g, FLOAT b, FLOAT a) {
 
 FLOAT sinTbl[SINCOSMAX] = {0};
 FLOAT cosTbl[SINCOSMAX] = {0};
+FLOAT invSinTbl[SINCOSMAX] = {0};
+FLOAT invCosTbl[SINCOSMAX] = {0};
+
+BOOL paused = FALSE;
 
 FLOAT* DW2RGBAF(DWORD color) {
 	FLOAT* arr = new FLOAT[4];
@@ -56,8 +60,8 @@ float inverseSqrt(float number) {
 windowProperties props = {
 	NULL
 	, { 0, 0, 0, 0, }
-	, 320
-	, 200
+	, 640
+	, 480
 	, 16
 	, TRUE
 	, L"GameTutorials"

@@ -113,7 +113,7 @@ VOID Bitmap::ConvertToRGB24(const BYTE *temp) {
 	   ++padWidth;
 	}
 
-	data = new BYTE[size];
+	data = new DWORD[size / 3];
 	if(NULL == data) {
 		MessageBox(props.hWnd, L"Could not allocate memory.", L"Error", MB_OK | MB_ICONERROR);
 
@@ -125,39 +125,35 @@ VOID Bitmap::ConvertToRGB24(const BYTE *temp) {
 	INT offset = padWidth - byteWidth;
 	if(infoHeader.biHeight <= 0) {
 		UINT j = 0;
-		BYTE *ref1;
-		const BYTE *ref2;
+		CONST BYTE *tempX = temp;
 		for(UINT i = 0; i < size; i += 3) {
 			if((padWidth > 0) && ((i + offset) % padWidth == 0)) {
 				i += offset;
 			}
-
-			ref1 = data + j;
-			ref2 = temp + i;
 			
-			ref1[2] = ref2[0];
-			ref1[1] = ref2[1];
-			ref1[0] = ref2[2];
-
-			j += 3;
+			tempX = temp + i;
+			
+			BYTE r = tempX[2];
+			BYTE g = tempX[1];
+			BYTE b = tempX[0];
+			
+			data[j++] = RGBAb(r, g, b, 255);
 		}
 	} else {
-		UINT j = size - 3;
-		BYTE *ref1;
-		const BYTE *ref2;
-
+		UINT j = (size / 3) - 1;
+		CONST BYTE *tempX = temp;
 		for(UINT i = 0; i < size; i += 3) {
 			if((padWidth > 0) && ((i + offset) % padWidth == 0)) {
 				i += offset;
 			}
-
-			ref1 = data + j;
-			ref2 = temp + i;
-
-			ref1[2] = ref2[0];
-			ref1[1] = ref2[1];
-			ref1[0] = ref2[2];
-			j -= 3;
+			
+			tempX = temp + i;
+			
+			BYTE r = tempX[2];
+			BYTE g = tempX[1];
+			BYTE b = tempX[0];
+			
+			data[j--] = RGBAb(r, g, b, 255);
 		}
 	}
 }
@@ -169,7 +165,7 @@ VOID Bitmap::ConvertToRGB8(const BYTE *temp) {
 	   ++padWidth;
 	}
 
-	data = new BYTE[size * 3];
+	data = new DWORD[size];
 	if(NULL == data) {
 		MessageBox(props.hWnd, L"Could not allocate memory.", L"Error", MB_OK | MB_ICONERROR);
 
@@ -186,13 +182,14 @@ VOID Bitmap::ConvertToRGB8(const BYTE *temp) {
 			if((padWidth > 0) && ((i + offset) % padWidth == 0)) {
 				i += offset;
 			}
-
-			ref1 = data + i;
+			
 			ref2 = *(temp + j);
-			*ref1 = palette[ref2].rgbRed;
-			*(ref1 + 1) = palette[ref2].rgbGreen;
-			*(ref1 + 2) = palette[ref2].rgbBlue;
-			++j;
+			
+			BYTE r = palette[ref2].rgbRed;
+			BYTE g = palette[ref2].rgbGreen;
+			BYTE b = palette[ref2].rgbBlue;
+			
+			data[j++] = RGBAb(r, g, b, 255);
 		}
 	} else {
 		UINT j = size - 1;
@@ -201,12 +198,14 @@ VOID Bitmap::ConvertToRGB8(const BYTE *temp) {
 			if((padWidth > 0) && ((i + offset) % padWidth == 0)) {
 				i += offset;
 			}
-			ref1 = data + i;
+			
 			ref2 = *(temp + j);
-			*ref1 = palette[ref2].rgbRed;
-			*(ref1 + 1) = palette[ref2].rgbGreen;
-			*(ref1 + 2) = palette[ref2].rgbBlue;
-			--j;
+			
+			BYTE r = palette[ref2].rgbRed;
+			BYTE g = palette[ref2].rgbGreen;
+			BYTE b = palette[ref2].rgbBlue;
+			
+			data[j--] = RGBAb(r, g, b, 255);
 		}
 	}
 }
