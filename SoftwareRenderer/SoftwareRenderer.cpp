@@ -350,34 +350,56 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 	DWORD *dBits = (DWORD *)mBuffer.GetBits();
 	DWORD *tBits = (DWORD *)textures[t.texId] -> data;
 	
-	const INT tWidth = textures[t.texId] -> infoHeader.biWidth;
-	const INT tHeight = textures[t.texId] -> infoHeader.biHeight;
+	const INT tWidth = textures[t.texId] -> infoHeader.biWidth - 1;
+	const INT tHeight = textures[t.texId] -> infoHeader.biHeight - 1;
 	
 	const FLOAT x1 = t.v1.x, y1 = t.v1.y, z1 = t.v1.z, u1 = t.v1.u * tWidth, v1 = t.v1.v * tHeight;
 	const FLOAT x2 = t.v2.x, y2 = t.v2.y, z2 = t.v2.z, u2 = t.v2.u * tWidth, v2 = t.v2.v * tHeight;
 	const FLOAT x3 = t.v3.x, y3 = t.v3.y, z3 = t.v3.z, u3 = t.v3.u * tWidth, v3 = t.v3.v * tHeight;
 	
+	const FLOAT* rgba1 = DW2RGBAF(t.v1.color);
+	const FLOAT* rgba2 = DW2RGBAF(t.v2.color);
+	const FLOAT* rgba3 = DW2RGBAF(t.v3.color);
+	
+	const FLOAT r1 = rgba1[0], g1 = rgba1[1], b1 = rgba1[2], a1 = rgba1[3];
+	const FLOAT r2 = rgba2[0], g2 = rgba2[1], b2 = rgba2[2], a2 = rgba2[3];
+	const FLOAT r3 = rgba3[0], g3 = rgba3[1], b3 = rgba3[2], a3 = rgba3[3];
+	
 	const FLOAT dy1 = INVERSE(y3 - y1);
+	
 	FLOAT sx1 = (x3 - x1) * dy1;
 	FLOAT sz1 = (z3 - z1) * dy1;
 	FLOAT su1 = (u3 - u1) * dy1;
 	FLOAT sv1 = (v3 - v1) * dy1;
+	FLOAT sr1 = (r3 - r1) * dy1;
+	FLOAT sg1 = (g3 - g1) * dy1;
+	FLOAT sb1 = (b3 - b1) * dy1;
+	FLOAT sa1 = (a3 - a1) * dy1;
 	
 	FLOAT xx1 = x1, zz1 = z1;
 	FLOAT uu1 = u1, vv1 = v1;
+	FLOAT rr1 = r1, gg1 = g1;
+	FLOAT bb1 = b1, aa1 = a1;
 	
 	if(y2 != y1) {
 		const FLOAT dy2 = INVERSE(y2 - y1);
+		
 		FLOAT sx2 = (x2 - x1) * dy2;
 		FLOAT sz2 = (z2 - z1) * dy2;
 		FLOAT su2 = (u2 - u1) * dy2;
 		FLOAT sv2 = (v2 - v1) * dy2;
+		FLOAT sr2 = (r2 - r1) * dy2;
+		FLOAT sg2 = (g2 - g1) * dy2;
+		FLOAT sb2 = (b2 - b1) * dy2;
+		FLOAT sa2 = (a2 - a1) * dy2;
 		
 		FLOAT xx2 = x1, zz2 = z1;
-		FLOAT uu2 = u2, vv2 = v2;
+		FLOAT uu2 = u1, vv2 = v1;
+		FLOAT rr2 = r1, gg2 = g1;
+		FLOAT bb2 = b1, aa2 = a1;
 
 		INT startY = iRound(ceil(y1));
-		INT endY = iRound(ceil(y2)) - 1;
+		INT endY = (INT)(ceil(y2)) - 1;
 		FLOAT subY = (FLOAT)startY - y1;
 
 		if(startY < 0) {
@@ -392,19 +414,20 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 		zz1 += sz1 * subY; zz2 += sz2 * subY;
 		uu1 += su1 * subY; uu2 += su2 * subY;
 		vv1 += sv1 * subY; vv2 += sv2 * subY;
+		rr1 += sr1 * subY; rr2 += sr2 * subY;
+		gg1 += sg1 * subY; gg2 += sg2 * subY;
+		bb1 += sb1 * subY; bb2 += sb2 * subY;
+		aa1 += sa1 * subY; aa2 += sa2 * subY;
 		
 		if(sx2 < sx1) {
-			SWAP(FLOAT, xx1, xx2);
-			SWAP(FLOAT, sx1, sx2);
-			
-			SWAP(FLOAT, zz1, zz2);
-			SWAP(FLOAT, sz1, sz2);
-			
-			SWAP(FLOAT, uu1, uu2);
-			SWAP(FLOAT, su1, su2);
-			
-			SWAP(FLOAT, vv1, vv2);
-			SWAP(FLOAT, sv1, sv2);
+			SWAP(FLOAT, xx1, xx2); SWAP(FLOAT, sx1, sx2);
+			SWAP(FLOAT, zz1, zz2); SWAP(FLOAT, sz1, sz2);
+			SWAP(FLOAT, uu1, uu2); SWAP(FLOAT, su1, su2);
+			SWAP(FLOAT, vv1, vv2); SWAP(FLOAT, sv1, sv2);
+			SWAP(FLOAT, rr1, rr2); SWAP(FLOAT, sr1, sr2);
+			SWAP(FLOAT, gg1, gg2); SWAP(FLOAT, sg1, sg2);
+			SWAP(FLOAT, bb1, bb2); SWAP(FLOAT, sb1, sb2);
+			SWAP(FLOAT, aa1, aa2); SWAP(FLOAT, sa1, sa2);
 			
 			swapX = TRUE;
 		}
@@ -412,13 +435,21 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 		for(INT y = startY; y <= endY; ++y) {
 			const FLOAT dx = INVERSE(xx2 - xx1);
 			
-			FLOAT szx = (zz1 - zz2) * dx;
-			FLOAT sux = (uu1 - uu2) * dx;
-			FLOAT svx = (vv1 - vv2) * dx;
+			FLOAT szx = (zz2 - zz1) * dx;
+			FLOAT sux = (uu2 - uu1) * dx;
+			FLOAT svx = (vv2 - vv1) * dx;
+			FLOAT srx = (rr2 - rr1) * dx;
+			FLOAT sgx = (gg2 - gg1) * dx;
+			FLOAT sbx = (bb2 - bb1) * dx;
+			FLOAT sax = (aa2 - aa1) * dx;
 			
-			FLOAT zx = zz2;
-			FLOAT ux = uu2;
-			FLOAT vx = vv2;
+			FLOAT zx = zz1;
+			FLOAT ux = uu1;
+			FLOAT vx = vv1;
+			FLOAT rx = rr1;
+			FLOAT gx = gg1;
+			FLOAT bx = bb1;
+			FLOAT ax = aa1;
 
 			INT startX = iRound(ceil(xx1));
 			INT endX = iRound(ceil(xx2)) - 1;
@@ -436,6 +467,10 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			zx += szx * subX;
 			ux += sux * subX;
 			vx += svx * subX;
+			rx += srx * subX;
+			gx += sgx * subX;
+			bx += sbx * subX;
+			ax += sax * subX;
 			
 			LONG offset = (y * width) + startX;
 			FLOAT *zBitsX = zBits + offset;
@@ -444,45 +479,71 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			for(INT x = 0; x <= endX; ++x) {
 				if(zx > zBitsX[x]) {
 					zBitsX[x] = zx;
-					LONG tOffset = ((INT)ux % tWidth) + (tWidth * ((INT)vx % tHeight));
-					dBitsX[x] = tBits[tOffset];
+					
+					LONG tOffset = (INT)ux + (tWidth * (INT)vx);
+					if(tOffset < 0) {
+						tOffset = 0;
+					}
+					if(tOffset >= 4096) {
+						tOffset = 4095;
+					}
+					
+					//dBitsX[x] = tBits[tOffset];
+					dBitsX[x] = MULTIPLYRGBA(tBits[tOffset], rx, gx, bx, ax);
+					
+					/*FLOAT zx2 = zx / 10.0f;
+					CLAMP(zx2, 0.0f, 1.0f);
+
+					dBitsX[x] = RGBAf(zx2, zx2, zx2, 1.0f);*/
 				}
 				
 				zx += szx;
 				ux += sux;
 				vx += svx;
+				rx += srx;
+				gx += sgx;
+				bx += sbx;
+				ax += sax;
 			}
 
 			xx1 += sx1; xx2 += sx2;
 			zz1 += sz1; zz2 += sz2;
 			uu1 += su1; uu2 += su2;
 			vv1 += sv1; vv2 += sv2;
+			rr1 += sr1; rr2 += sr2;
+			gg1 += sg1; gg2 += sg2;
+			bb1 += sb1; bb2 += sb2;
+			aa1 += sa1; aa2 += sa2;
 		}
 		
 		if(TRUE == swapX) {
-			SWAP(FLOAT, xx1, xx2);
-			SWAP(FLOAT, sx1, sx2);
-			
-			SWAP(FLOAT, zz1, zz2);
-			SWAP(FLOAT, sz1, sz2);
-			
-			SWAP(FLOAT, uu1, uu2);
-			SWAP(FLOAT, su1, su2);
-			
-			SWAP(FLOAT, vv1, vv2);
-			SWAP(FLOAT, sv1, sv2);
+			xx1 = xx2; sx1 = sx2;
+			zz1 = zz2; sz1 = sz2;
+			uu1 = uu2; su1 = su2;
+			vv1 = vv2; sv1 = sv2;
+			rr1 = rr2; sr1 = sr2;
+			gg1 = gg2; sg1 = sg2;
+			bb1 = bb2; sb1 = sb2;
+			aa1 = aa2; sa1 = sa2;
 		}
 	}
 
 	if(y3 != y2) {
-		const FLOAT dy3 = INVERSE(y3 - y2);
-		FLOAT sx2 = (x3 - x2) * dy3;
-		FLOAT sz2 = (z3 - z2) * dy3;
-		FLOAT su2 = (u3 - u2) * dy3;
-		FLOAT sv2 = (v3 - v2) * dy3;
+		const FLOAT dy2 = INVERSE(y3 - y2);
+		
+		FLOAT sx2 = (x3 - x2) * dy2;
+		FLOAT sz2 = (z3 - z2) * dy2;
+		FLOAT su2 = (u3 - u2) * dy2;
+		FLOAT sv2 = (v3 - v2) * dy2;
+		FLOAT sr2 = (r3 - r2) * dy2;
+		FLOAT sg2 = (g3 - g2) * dy2;
+		FLOAT sb2 = (b3 - b2) * dy2;
+		FLOAT sa2 = (a3 - a2) * dy2;
 		
 		FLOAT xx2 = x2, zz2 = z2;
 		FLOAT uu2 = u2, vv2 = v2;
+		FLOAT rr2 = r2, gg2 = g2;
+		FLOAT bb2 = b2, aa2 = a2;
 
 		INT startY = iRound(ceil(y2));
 		INT endY = iRound(ceil(y3)) - 1;
@@ -503,37 +564,50 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			zz1 = z1 + (sz1 * dy);
 			uu1 = u1 + (su1 * dy);
 			vv1 = v1 + (sv1 * dy);
+			rr1 = r1 + (sr1 * dy);
+			gg1 = g1 + (sg1 * dy);
+			bb1 = b1 + (sb1 * dy);
+			aa1 = a1 + (sa1 * dy);
 		}
 		
 		xx1 += sx1 * subY; xx2 += sx2 * subY;
 		zz1 += sz1 * subY; zz2 += sz2 * subY;
 		uu1 += su1 * subY; uu2 += su2 * subY;
 		vv1 += sv1 * subY; vv2 += sv2 * subY;
+		rr1 += sr1 * subY; rr2 += sr2 * subY;
+		gg1 += sg1 * subY; gg2 += sg2 * subY;
+		bb1 += sb1 * subY; bb2 += sb2 * subY;
+		aa1 += sa1 * subY; aa2 += sa2 * subY;
 		
 		if(TRUE == swapX) {
-			SWAP(FLOAT, xx1, xx2);
-			SWAP(FLOAT, sx1, sx2);
-			
-			SWAP(FLOAT, zz1, zz2);
-			SWAP(FLOAT, sz1, sz2);
-			
-			SWAP(FLOAT, uu1, uu2);
-			SWAP(FLOAT, su1, su2);
-			
-			SWAP(FLOAT, vv1, vv2);
-			SWAP(FLOAT, sv1, sv2);
+			SWAP(FLOAT, xx1, xx2); SWAP(FLOAT, sx1, sx2);
+			SWAP(FLOAT, zz1, zz2); SWAP(FLOAT, sz1, sz2);
+			SWAP(FLOAT, uu1, uu2); SWAP(FLOAT, su1, su2);
+			SWAP(FLOAT, vv1, vv2); SWAP(FLOAT, sv1, sv2);
+			SWAP(FLOAT, rr1, rr2); SWAP(FLOAT, sr1, sr2);
+			SWAP(FLOAT, gg1, gg2); SWAP(FLOAT, sg1, sg2);
+			SWAP(FLOAT, bb1, bb2); SWAP(FLOAT, sb1, sb2);
+			SWAP(FLOAT, aa1, aa2); SWAP(FLOAT, sa1, sa2);
 		}
 
 		for(INT y = startY; y <= endY; ++y) {
 			const FLOAT dx = INVERSE(xx2 - xx1);
 			
-			FLOAT szx = (zz1 - zz2) * dx;
-			FLOAT sux = (uu1 - uu2) * dx;
-			FLOAT svx = (vv1 - vv2) * dx;
+			FLOAT szx = (zz2 - zz1) * dx;
+			FLOAT sux = (uu2 - uu1) * dx;
+			FLOAT svx = (vv2 - vv1) * dx;
+			FLOAT srx = (rr2 - rr1) * dx;
+			FLOAT sgx = (gg2 - gg1) * dx;
+			FLOAT sbx = (bb2 - bb1) * dx;
+			FLOAT sax = (aa2 - aa1) * dx;
 			
-			FLOAT zx = zz2;
-			FLOAT ux = uu2;
-			FLOAT vx = vv2;
+			FLOAT zx = zz1;
+			FLOAT ux = uu1;
+			FLOAT vx = vv1;
+			FLOAT rx = rr1;
+			FLOAT gx = gg1;
+			FLOAT bx = bb1;
+			FLOAT ax = aa1;
 			
 			INT startX = iRound(ceil(xx1));
 			INT endX = iRound(ceil(xx2)) - 1;
@@ -551,6 +625,10 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			zx += szx * subX;
 			ux += sux * subX;
 			vx += svx * subX;
+			rx += srx * subX;
+			gx += sgx * subX;
+			bx += sbx * subX;
+			ax += sax * subX;
 			
 			LONG offset = (y * width) + startX;
 			FLOAT *zBitsX = zBits + offset;
@@ -559,19 +637,37 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			for(INT x = 0; x <= endX; ++x) {
 				if(zx > zBitsX[x]) {
 					zBitsX[x] = zx;
-					LONG tOffset = ((INT)ux % tWidth) + (tWidth * ((INT)vx % tHeight));
-					dBitsX[x] = tBits[tOffset];
+					
+					LONG tOffset = (INT)ux + (tWidth * (INT)vx);
+					if(tOffset < 0) { tOffset = 0; }
+					if(tOffset >= 4096) { tOffset = 4095; }
+					
+					//dBitsX[x] = tBits[tOffset];
+					dBitsX[x] = MULTIPLYRGBA(tBits[tOffset], rx, gx, bx, ax);
+					
+					/*FLOAT zx2 = zx / 10.0f;
+					CLAMP(zx2, 0.0f, 1.0f);
+
+					dBitsX[x] = RGBAf(zx2, zx2, zx2, 1.0f);*/
 				}
 
 				zx += szx;
 				ux += sux;
 				vx += svx;
+				rx += srx;
+				gx += sgx;
+				bx += sbx;
+				ax += sax;
 			}
 
 			xx1 += sx1; xx2 += sx2;
 			zz1 += sz1; zz2 += sz2;
-			uu1 += uu1; uu2 += uu2;
-			vv1 += vv1; vv2 += vv2;
+			uu1 += su1; uu2 += su2;
+			vv1 += sv1; vv2 += sv2;
+			rr1 += sr1; rr2 += sr2;
+			gg1 += sg1; gg2 += sg2;
+			bb1 += sb1; bb2 += sb2;
+			aa1 += sa1; aa2 += sa2;
 		}
 	}
 }

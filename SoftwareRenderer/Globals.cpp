@@ -12,6 +12,12 @@ DWORD RGBAf(FLOAT r, FLOAT g, FLOAT b, FLOAT a) {
 	return da << 24 | dr << 16 | dg << 8 | db;
 }
 
+DWORD MULTIPLYRGBA(DWORD color, FLOAT r, FLOAT g, FLOAT b, FLOAT a) {
+	BYTE *c = DW2RGBAB(color);
+	
+	return RGBAb((BYTE)(c[0] * r), (BYTE)(c[1] * g), (BYTE)(c[2] * b), (BYTE)(c[3] * a));
+}
+
 FLOAT sinTbl[SINCOSMAX] = {0};
 FLOAT cosTbl[SINCOSMAX] = {0};
 FLOAT invSinTbl[SINCOSMAX] = {0};

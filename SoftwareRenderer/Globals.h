@@ -4,6 +4,7 @@
 typedef double DOUBLE;
 
 #define SWAP(type, i, j) { type _temp_var = i; i = j; j = _temp_var; }
+#define CLAMP(num, min, max) { if(num > max) { num = max; } if(num < min) { num = min; } }
 
 #define AB(color) ((BYTE)(color >> 24))
 #define RB(color) ((BYTE)(color >> 16))
@@ -43,6 +44,7 @@ FLOAT* DW2RGBAF(DWORD color);
 BYTE* DW2RGBAB(DWORD color);
 DWORD RGBAb(BYTE r, BYTE g, BYTE b, BYTE a);
 DWORD RGBAf(FLOAT r, FLOAT g, FLOAT b, FLOAT a);
+DWORD MULTIPLYRGBA(DWORD color, FLOAT r, FLOAT g, FLOAT b, FLOAT a);
 
 extern FLOAT sinTbl[SINCOSMAX];
 extern FLOAT cosTbl[SINCOSMAX];
@@ -66,18 +68,19 @@ struct windowProperties {
 
 extern windowProperties props;
 
-static const Vertex3 vertices[] = {
-	  { -1.0f, -1.0f, -1.0f }
-	, {  1.0f, -1.0f, -1.0f }
-	, { -1.0f,  1.0f, -1.0f }
-	, {  1.0f,  1.0f, -1.0f }
-	, { -1.0f, -1.0f,  1.0f }
-	, {  1.0f, -1.0f,  1.0f }
-	, { -1.0f,  1.0f,  1.0f }
-	, {  1.0f,  1.0f,  1.0f }
+static const Vertex3c verticesc[] = {
+	  {  0.0f, 0.00f, 0.00f, 0.0f, 0.0f, 0xff000000 }
+	, {  1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0xffffff00 }
+	, {  1.0f,  1.0f, -1.0f, 1.0f, 0.0f, 0xff00ff00 }
+	, {  1.0f, -1.0f,  1.0f, 1.0f, 1.0f, 0xff00ffff }
+	, {  1.0f, -1.0f, -1.0f, 0.0f, 1.0f, 0xff0000ff }
+	, { -1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 0xffff00ff }
+	, { -1.0f,  1.0f, -1.0f, 1.0f, 0.0f, 0xffff0000 }
+	, { -1.0f, -1.0f,  1.0f, 1.0f, 1.0f, 0xff000000 }
+	, { -1.0f, -1.0f, -1.0f, 0.0f, 1.0f, 0xffffffff }
 };
 
-static const Vertex3c verticesc[] = {
+/*static const Vertex3c verticesc[] = {
 	  {  0.0f, 0.00f, 0.00f, 0.0f, 0.0f, 0xff000000 }
 	, {  1.0f, 0.00f, 0.00f, 0.0f, 1.0f, 0xff000000 }
 	, {  1.0f, 0.50f, 0.50f, 1.0f, 1.0f, 0xffff0000 }
@@ -114,9 +117,24 @@ static const Vertex3c verticesc[] = {
 	, { -1.0f,-0.65f,-0.25f, 1.0f, 1.0f, 0xffff0000 }
 	, { -1.0f, 0.65f, 0.25f, 0.0f, 0.0f, 0xffffff00 }
 	, { -1.0f, 0.65f,-0.25f, 0.0f, 1.0f, 0xff00ff00 }
-};
+};*/
 
 static const DWORD indices[] = {
+	  1, 2, 3
+	, 2, 4, 3
+	, 2, 6, 4
+	, 6, 8, 4
+	, 6, 5, 8
+	, 5, 7, 8
+	, 5, 1, 7
+	, 1, 3, 7
+	, 4, 8, 3
+	, 8, 7, 3
+	, 2, 1, 6
+	, 6, 1, 5
+};
+
+/*static const DWORD indices[] = {
 	  9, 1, 10, 10, 1, 3, 3, 1, 17, 17, 1, 6
 	, 6, 1, 16, 16, 1, 2, 2, 1, 12, 12, 1, 8
 	, 8, 1, 13, 13, 1, 4, 4, 1, 14, 14, 1, 7
@@ -135,7 +153,7 @@ static const DWORD indices[] = {
 	, 18, 23, 33, 18, 33, 19, 18, 19, 29, 18, 29, 25
 	, 18, 25, 30, 18, 30, 21, 18, 21, 31, 18, 31, 24
 	, 18, 24, 32, 18, 32, 22, 18, 22, 28, 18, 28, 26
-};
+};*/
 
 static const WCHAR *textureFiles[] = {
 	L"texture.bmp"
