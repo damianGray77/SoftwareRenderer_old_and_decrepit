@@ -24,6 +24,7 @@ FLOAT invSinTbl[SINCOSMAX] = {0};
 FLOAT invCosTbl[SINCOSMAX] = {0};
 
 BOOL paused = FALSE;
+INT numCores = 1;
 
 FLOAT* DW2RGBAF(DWORD color) {
 	FLOAT* arr = new FLOAT[4];

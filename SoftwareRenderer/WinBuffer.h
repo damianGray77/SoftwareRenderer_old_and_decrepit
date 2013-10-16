@@ -28,6 +28,8 @@ public:
 	BOOL IsBuffer();
 
 	~WinBuffer() {}
+	
+	LONG *yOffsets;
 };
 
 #endif

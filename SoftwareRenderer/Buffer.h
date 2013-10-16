@@ -24,6 +24,8 @@ public:
 	BOOL IsBuffer();
 	
 	~Buffer() {}
+	
+	LONG *yOffsets;
 };
 
 #endif

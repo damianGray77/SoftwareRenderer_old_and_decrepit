@@ -6,11 +6,14 @@ Bitmap::Bitmap() {
 
 Bitmap::Bitmap(const WCHAR *path) {
 	data = NULL;
+	xOffsets = NULL;
+	yOffsets = NULL;
+	
 	LoadFromFile(path);
 }
 
 Bitmap::~Bitmap() {
-	if(NULL != data || NULL != palette) {
+	if(NULL != data || NULL != palette || NULL != xOffsets || NULL != yOffsets) {
 		Release();
 	}
 }
@@ -28,7 +31,7 @@ VOID Bitmap::LoadFromFile(const WCHAR *path) {
 		return;
 	}
 	
-	file = _wfopen(path, L"rb");
+	_wfopen_s(&file, path, L"rb");
 
 	if(NULL == file) {
 		MessageBox(props.hWnd, L"Could not find the file.", L"Error", MB_OK | MB_ICONERROR);
@@ -57,6 +60,16 @@ VOID Bitmap::LoadFromFile(const WCHAR *path) {
 	
 	size = fileHeader.bfSize - fileHeader.bfOffBits;
 	//size = infoHeader.biWidth * infoHeader.biHeight * (infoHeader.biBitCount / 8);
+	
+	xOffsets = new LONG[infoHeader.biWidth];
+	for(INT i = 0; i < infoHeader.biWidth; ++i) {
+		xOffsets[i] = i * 3;
+	}
+	
+	yOffsets = new LONG[infoHeader.biHeight];
+	for(INT i = 0; i < infoHeader.biHeight; ++i) {
+		yOffsets[i] = infoHeader.biWidth * 3 * i;
+	}
 
 	BYTE *temp = new BYTE[size];
 	if(NULL == temp) {
@@ -101,9 +114,19 @@ VOID Bitmap::Release() {
 	if(NULL != palette) {
 		delete[](palette);
 	}
+	
+	if(NULL != xOffsets) {
+		delete[](xOffsets);
+	}
+	
+	if(NULL != yOffsets) {
+		delete[](yOffsets);
+	}
 
 	data = NULL;
 	palette = NULL;
+	xOffsets = NULL;
+	yOffsets = NULL;
 }
 
 VOID Bitmap::ConvertToRGB24(const BYTE *temp) {
@@ -113,7 +136,7 @@ VOID Bitmap::ConvertToRGB24(const BYTE *temp) {
 	   ++padWidth;
 	}
 
-	data = new DWORD[size / 3];
+	data = new BYTE[size];
 	if(NULL == data) {
 		MessageBox(props.hWnd, L"Could not allocate memory.", L"Error", MB_OK | MB_ICONERROR);
 
@@ -137,10 +160,14 @@ VOID Bitmap::ConvertToRGB24(const BYTE *temp) {
 			BYTE g = tempX[1];
 			BYTE b = tempX[0];
 			
-			data[j++] = RGBAb(r, g, b, 255);
+			data[j++] = r;
+			data[j++] = g;
+			data[b++] = b;
+			
+			//data[j++] = RGBAb(r, g, b, 255);
 		}
 	} else {
-		UINT j = (size / 3) - 1;
+		UINT j = size - 1;
 		CONST BYTE *tempX = temp;
 		for(UINT i = 0; i < size; i += 3) {
 			if((padWidth > 0) && ((i + offset) % padWidth == 0)) {
@@ -153,7 +180,11 @@ VOID Bitmap::ConvertToRGB24(const BYTE *temp) {
 			BYTE g = tempX[1];
 			BYTE b = tempX[0];
 			
-			data[j--] = RGBAb(r, g, b, 255);
+			data[j--] = r;
+			data[j--] = g;
+			data[j--] = b;
+			
+			//data[j--] = RGBAb(r, g, b, 255);
 		}
 	}
 }
@@ -165,7 +196,7 @@ VOID Bitmap::ConvertToRGB8(const BYTE *temp) {
 	   ++padWidth;
 	}
 
-	data = new DWORD[size];
+	data = new BYTE[size * 3];
 	if(NULL == data) {
 		MessageBox(props.hWnd, L"Could not allocate memory.", L"Error", MB_OK | MB_ICONERROR);
 
@@ -177,7 +208,7 @@ VOID Bitmap::ConvertToRGB8(const BYTE *temp) {
 	INT offset = padWidth - byteWidth;
 	if(infoHeader.biHeight > 0) {
 		UINT j = 0;
-		BYTE ref2, *ref1;
+		BYTE ref2;
 		for(UINT i = 0; i < size * 3; i += 3) {
 			if((padWidth > 0) && ((i + offset) % padWidth == 0)) {
 				i += offset;
@@ -189,11 +220,15 @@ VOID Bitmap::ConvertToRGB8(const BYTE *temp) {
 			BYTE g = palette[ref2].rgbGreen;
 			BYTE b = palette[ref2].rgbBlue;
 			
-			data[j++] = RGBAb(r, g, b, 255);
+			data[j++] = r;
+			data[j++] = g;
+			data[j++] = b;
+			
+			//data[j++] = RGBAb(r, g, b, 255);
 		}
 	} else {
-		UINT j = size - 1;
-		BYTE ref2, *ref1;
+		UINT j = (size * 3) - 1;
+		BYTE ref2;
 		for(UINT i = 0; i < size * 3; i += 3) {
 			if((padWidth > 0) && ((i + offset) % padWidth == 0)) {
 				i += offset;
@@ -205,7 +240,11 @@ VOID Bitmap::ConvertToRGB8(const BYTE *temp) {
 			BYTE g = palette[ref2].rgbGreen;
 			BYTE b = palette[ref2].rgbBlue;
 			
-			data[j--] = RGBAb(r, g, b, 255);
+			data[j--] = r;
+			data[j--] = g;
+			data[j--] = b;
+			
+			//data[j--] = RGBAb(r, g, b, 255);
 		}
 	}
 }

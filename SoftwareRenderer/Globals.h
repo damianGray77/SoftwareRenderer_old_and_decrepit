@@ -51,6 +51,7 @@ extern FLOAT cosTbl[SINCOSMAX];
 extern FLOAT invSinTbl[SINCOSMAX];
 extern FLOAT invCosTbl[SINCOSMAX];
 extern BOOL paused;
+extern INT numCores;
 
 float inverseSqrt(float number);
 

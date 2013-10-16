@@ -6,6 +6,8 @@ WinBuffer::WinBuffer() {
 
 	bufDC = NULL;
 	dibDC = NULL;
+	
+	yOffsets = NULL;
 }
 
 HRESULT WinBuffer::Init(HDC dc, DWORD w, DWORD h) {
@@ -47,26 +49,36 @@ HRESULT WinBuffer::Init(HDC dc, DWORD w, DWORD h) {
 	mWidth = w * 0.5f;
 	height = h;
 	mHeight = h * 0.5f;
+	
+	yOffsets = new LONG[h];
+	for(INT i = 0; i < h; ++i) {
+		yOffsets[i] = w * i;
+	}
 
 	return S_OK;
 }
 
 VOID WinBuffer::DeInit() {
+	if(NULL != defBmp) {
+		SelectObject(bufDC, defBmp);
+		defBmp = NULL;
+	}
+	
+	if(NULL != bufDC) {
+		DeleteDC(bufDC);
+		bufDC = NULL;
+	}
+
 	if(NULL != bufBmp) {
-		if(NULL != bufDC) {
-			if(NULL != defBmp) {
-				SelectObject(bufDC, defBmp);
-				defBmp = NULL;
-			}
-
-			DeleteDC(bufDC);
-			bufDC = NULL;
-		}
-
 		DeleteObject(bufBmp);
 		bufBmp = NULL;
 	}
+	
+	if(NULL != yOffsets) {
+		delete[] yOffsets;
+	}
 
+	yOffsets = NULL;
 	bits = NULL;
 
 	width = 0;

@@ -23,6 +23,11 @@ VOID InitWindow() {
 	AdjustWindowRectEx(&props.screenRect, winStyle, FALSE, winStyleEx);
 
 	props.hWnd = CreateWindowEx(winStyleEx, props.className, props.windowName, winStyle, CW_USEDEFAULT, CW_USEDEFAULT, props.screenRect.right - props.screenRect.left, props.screenRect.bottom - props.screenRect.top, NULL, NULL, wc.hInstance, NULL);
+	
+	SYSTEM_INFO sysinfo;
+	GetSystemInfo(&sysinfo);
+
+	numCores = sysinfo.dwNumberOfProcessors;
 }
 
 VOID DeInitWindow() {
