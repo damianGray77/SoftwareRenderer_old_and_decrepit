@@ -3,7 +3,7 @@
 	ProjectType="Visual C++"
 	Version="9.00"
 	Name="SoftwareRenderer"
-	ProjectGUID="{34F99FD3-AB56-47E1-B0DD-9C20AC51FDCF}"
+	ProjectGUID="{6820FD97-1EED-4E53-9268-B3CE738D61AC}"
 	RootNamespace="SoftwareRenderer"
 	Keyword="Win32Proj"
 	TargetFrameworkVersion="196613"
@@ -41,6 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
+				FavorSizeOrSpeed="1"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -114,6 +115,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -171,15 +173,27 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\Buffer.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\Camera.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\Core.cpp"
+				RelativePath=".\Globals.cpp"
 				>
 			</File>
 			<File
 				RelativePath=".\Main.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\Matrix.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\Model.cpp"
 				>
 			</File>
 			<File
@@ -207,98 +221,34 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\Structs\Texture.cpp"
+				RelativePath=".\Vector.cpp"
 				>
 			</File>
-			<Filter
-				Name="Structs"
+			<File
+				RelativePath=".\Vertex.cpp"
 				>
-				<File
-					RelativePath=".\Structs\Color3b.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Color3f.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Color4b.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Color4f.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Model.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Polygon3.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\PVertex3.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\PVertex3c.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Triangle.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Vector3.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Vertex2.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Vertex2c.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Vertex3.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Vertex3c.cpp"
-					>
-				</File>
-			</Filter>
-			<Filter
-				Name="Math"
+			</File>
+			<File
+				RelativePath=".\WinBuffer.cpp"
 				>
-				<File
-					RelativePath=".\Math\Matrix3x3.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Math\Matrix4x4.cpp"
-					>
-				</File>
-			</Filter>
+			</File>
 			<Filter
 				Name="Files"
 				>
 				<File
-					RelativePath=".\Files\Bitmap.cpp"
+					RelativePath=".\Bitmap.cpp"
 					>
 				</File>
 			</Filter>
 			<Filter
-				Name="Buffers"
+				Name="Structs"
 				>
 				<File
-					RelativePath=".\Buffers\Buffer.cpp"
+					RelativePath=".\Color4f.c"
 					>
 				</File>
 				<File
-					RelativePath=".\Buffers\WinBuffer.cpp"
+					RelativePath=".\Vertex2.cpp"
 					>
 				</File>
 			</Filter>
@@ -309,15 +259,35 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
+				RelativePath=".\Buffer.h"
+				>
+			</File>
+			<File
 				RelativePath=".\Camera.h"
 				>
 			</File>
 			<File
-				RelativePath=".\Core.h"
+				RelativePath=".\Color.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Globals.h"
 				>
 			</File>
 			<File
 				RelativePath=".\Main.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Matrix.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Model.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Polygon.h"
 				>
 			</File>
 			<File
@@ -337,98 +307,46 @@
 				>
 			</File>
 			<File
-				RelativePath=".\Structs\Texture.h"
+				RelativePath=".\Texture.h"
 				>
 			</File>
-			<Filter
-				Name="Structs"
+			<File
+				RelativePath=".\TextureMap.h"
 				>
-				<File
-					RelativePath=".\Structs\Color3b.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Color3f.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Color4b.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Color4f.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Model.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Polygon3.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\PVertex3.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\PVertex3c.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Triangle.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Vector3.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Vertex2.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Vertex2c.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Vertex3.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Structs\Vertex3c.h"
-					>
-				</File>
-			</Filter>
-			<Filter
-				Name="Math"
+			</File>
+			<File
+				RelativePath=".\Triangle.h"
 				>
-				<File
-					RelativePath=".\Math\Matrix3x3.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Math\Matrix4x4.h"
-					>
-				</File>
-			</Filter>
+			</File>
+			<File
+				RelativePath=".\Vector.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Vertex.h"
+				>
+			</File>
+			<File
+				RelativePath=".\WinBuffer.h"
+				>
+			</File>
 			<Filter
 				Name="Files"
 				>
 				<File
-					RelativePath=".\Files\Bitmap.h"
+					RelativePath=".\Bitmap.h"
 					>
 				</File>
 			</Filter>
 			<Filter
-				Name="Buffers"
+				Name="Structs"
 				>
 				<File
-					RelativePath=".\Buffers\Buffer.h"
+					RelativePath=".\Color4f.h"
 					>
 				</File>
 				<File
-					RelativePath=".\Buffers\WinBuffer.h"
+					RelativePath=".\Vertex2.h"
 					>
 				</File>
 			</Filter>
@@ -448,10 +366,6 @@
 			</File>
 			<File
 				RelativePath=".\SoftwareRenderer.rc"
-				>
-			</File>
-			<File
-				RelativePath=".\texture.bmp"
 				>
 			</File>
 		</Filter>

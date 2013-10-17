@@ -1,8 +1,13 @@
+// stdafx.h : include file for standard system include files,
+// or project specific include files that are used frequently, but
+// are changed infrequently
+//
+
+#pragma once
+
 #include "targetver.h"
 
-#ifndef WIN32_LEAN_AND_MEAN
-	#define WIN32_LEAN_AND_MEAN
-#endif
+#define WIN32_LEAN_AND_MEAN
 
 #pragma comment(lib, "winmm.lib")
 
@@ -14,25 +19,9 @@
 #include <math.h>
 #include <assert.h>
 
-#define kSpeed 0.3f
+#include <stdlib.h>
+#include <malloc.h>
+#include <memory.h>
+#include <tchar.h>
 
-#include "WinBuffer.h"
-#include "Buffer.h"
-
-#include "Vertex.h"
-#include "Globals.h"
-#include "Matrix.h"
-#include "Vector.h"
-#include "Color.h"
-#include "Texture.h"
-#include "Polygon.h"
-#include "Triangle.h"
-#include "Model.h"
-#include "Camera.h"
-
-#include "Resource.h"
-
-#include "Bitmap.h"
-
-#include "SoftwareRenderer.h"
-#include "Main.h"
+#include "Core.h"

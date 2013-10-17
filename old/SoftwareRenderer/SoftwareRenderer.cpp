@@ -1,22 +1,14 @@
 #include "stdafx.h"
-#include "Buffers/WinBuffer.h"
-#include "Buffers/Buffer.h"
-#include "Files/Bitmap.h"
-#include "Math/Matrix4x4.h"
-#include "Math/Matrix3x3.h"
-#include "Structs/Color4f.h"
-#include "Structs/Color4b.h"
-#include "Structs/Texture.h"
-#include "Structs/Vertex2.h"
-#include "Structs/Vertex3.h"
-#include "Structs/Vertex3c.h"
-#include "Structs/Vector3.h"
-#include "Structs/Triangle.h"
-#include "Structs/Polygon3.h"
-#include "Structs/PVertex3c.h"
-#include "Structs/Model.h"
-#include "Camera.h"
 #include "SoftwareRenderer.h"
+#include "Model.h"
+#include "Globals.h"
+#include "stdafx.h"
+#include "Camera.h"
+#include "Color.h"
+#include "Vertex.h"
+#include "Matrix.h"
+#include "Triangle.h"
+#include "Polygon.h"
 
 inline INT iRound(FLOAT x) {
 	INT t;
@@ -127,7 +119,7 @@ VOID SoftwareRenderer::Project(const INT i) {
 	sCoords.y = (-coords.y * z) + mBuffer.mHeight;
 	sCoords.z = coords.z;
 
-	sCoords.c = color;
+	sCoords.color = color;
 	sCoords.u = uvMap.x;
 	sCoords.v = uvMap.y;
 }
@@ -238,8 +230,8 @@ HRESULT SoftwareRenderer::Render() {
 }
 
 HRESULT SoftwareRenderer::SetupGeometry() {
-	player.numFaces = indices_size / sizeof(INT) / 3;
-	player.numVerts = verticesc_size / sizeof(Vertex3c);
+	player.numFaces = sizeof(indices) / sizeof(INT) / 3;
+	player.numVerts = sizeof(verticesc) / sizeof(Vertex3c);
 	
 	player.vertices = new PVertex3c[player.numVerts];
 	for(INT i = 0; i < player.numVerts; ++i) {
@@ -266,7 +258,7 @@ HRESULT SoftwareRenderer::SetupGeometry() {
 }
 
 HRESULT SoftwareRenderer::SetupTextures() {
-	int numTextures = textureFiles_size / sizeof(WCHAR*);
+	int numTextures = sizeof(textureFiles) / sizeof(WCHAR*);
 
 	for(int i = 0; i < numTextures; ++i) {
 		Bitmap *bmp = new Bitmap(textureFiles[i]);
@@ -274,7 +266,7 @@ HRESULT SoftwareRenderer::SetupTextures() {
 		textures[i] = bmp;
 	}
 	
-	player.numTexts = tIndices_size / sizeof(INT);
+	player.numTexts = sizeof(tIndices) / sizeof(INT);
 	player.textures = new Texture[player.numTexts];
 	for(int i = 0; i < player.numTexts; ++i) {
 		player.textures[i].textureId = tIndices[i];
@@ -300,13 +292,20 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 	DWORD *dBits = (DWORD *)mBuffer.bits;
 	const BYTE *tBits = (BYTE *)texture -> data;
 	
-	const FLOAT x1 = t.v1.x, y1 = t.v1.y, z1 = t.v1.z, u1 = t.v1.u, v1 = t.v1.v;
-	const FLOAT x2 = t.v2.x, y2 = t.v2.y, z2 = t.v2.z, u2 = t.v2.u, v2 = t.v2.v;
-	const FLOAT x3 = t.v3.x, y3 = t.v3.y, z3 = t.v3.z, u3 = t.v3.u, v3 = t.v3.v;
+	const INT tWidth = texture -> infoHeader.biWidth - 1;
+	const INT tHeight = texture -> infoHeader.biHeight - 1;
 	
-	const FLOAT r1 = t.v1.c.r, g1 = t.v1.c.g, b1 = t.v1.c.b, a1 = t.v1.c.a;
-	const FLOAT r2 = t.v2.c.r, g2 = t.v2.c.g, b2 = t.v2.c.b, a2 = t.v2.c.a;
-	const FLOAT r3 = t.v3.c.r, g3 = t.v3.c.g, b3 = t.v3.c.b, a3 = t.v3.c.a;
+	const FLOAT x1 = t.v1.x, y1 = t.v1.y, z1 = t.v1.z, u1 = t.v1.u * tWidth, v1 = t.v1.v * tHeight;
+	const FLOAT x2 = t.v2.x, y2 = t.v2.y, z2 = t.v2.z, u2 = t.v2.u * tWidth, v2 = t.v2.v * tHeight;
+	const FLOAT x3 = t.v3.x, y3 = t.v3.y, z3 = t.v3.z, u3 = t.v3.u * tWidth, v3 = t.v3.v * tHeight;
+	
+	const FLOAT* rgba1 = DW2RGBAF(t.v1.color);
+	const FLOAT* rgba2 = DW2RGBAF(t.v2.color);
+	const FLOAT* rgba3 = DW2RGBAF(t.v3.color);
+	
+	const FLOAT r1 = rgba1[0], g1 = rgba1[1], b1 = rgba1[2], a1 = rgba1[3];
+	const FLOAT r2 = rgba2[0], g2 = rgba2[1], b2 = rgba2[2], a2 = rgba2[3];
+	const FLOAT r3 = rgba3[0], g3 = rgba3[1], b3 = rgba3[2], a3 = rgba3[3];
 	
 	const FLOAT dy1 = INVERSE(y3 - y1);
 	

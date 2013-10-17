@@ -1,6 +1,8 @@
 #ifndef SOFTWARERENDERER_CAMERA_H
 #define SOFTWARERENDERER_CAMERA_H
 
+#include "Vector.h"
+
 class Camera {
 public:
 	Camera();
@@ -18,7 +20,7 @@ public:
 	VOID MoveCamera(FLOAT speed);
 	VOID StrafeCamera(FLOAT speed);
 	VOID RotateView(FLOAT angle, FLOAT x, FLOAT y, FLOAT z);
-	VOID RotateAroundPoint(Vector3 center, FLOAT angle, FLOAT x, FLOAT y, FLOAT z);
+	VOID RotateAroundPoint(Vector3 center, FLOAT angle, FLOAT X, FLOAT Y, FLOAT Z);
 
 	VOID SetViewByMouse();
 	VOID CheckForMovement();

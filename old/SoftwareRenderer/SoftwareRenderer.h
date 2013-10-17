@@ -1,6 +1,14 @@
 #ifndef SOFTWARERENDERER_H
 #define SOFTWARERENDERER_H
 
+#include "Color.h"
+#include "WinBuffer.h"
+#include "Buffer.h"
+#include "Matrix.h"
+#include "Bitmap.h"
+#include "Triangle.h"
+#include "Model.h"
+
 class SoftwareRenderer {
 public:
 	SoftwareRenderer() {}

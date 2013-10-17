@@ -1,9 +1,6 @@
 #include "stdafx.h"
-#include "Math/Matrix4x4.h"
-#include "Math/Matrix3x3.h"
-#include "Structs/Vertex3.h"
-#include "Structs/Vector3.h"
 #include "Camera.h"
+#include "Vector.h"
 
 Camera::Camera() {
 	Vector3 vZero = { 0.0f, 0.0f, 0.0f };
