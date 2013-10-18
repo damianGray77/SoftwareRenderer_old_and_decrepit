@@ -183,6 +183,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\Structs\Polygon3cuv.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\SoftwareRenderer.cpp"
 				>
 			</File>
@@ -318,6 +322,10 @@
 			</File>
 			<File
 				RelativePath=".\Main.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Structs\Polygon3cuv.h"
 				>
 			</File>
 			<File

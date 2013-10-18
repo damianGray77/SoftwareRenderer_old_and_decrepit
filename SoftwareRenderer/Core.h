@@ -72,9 +72,10 @@ extern BOOL paused;
 extern WindowProperties props;
 
 class Vertex3c;
+class Polygon3cuv;
 
 extern const Vertex3c verticesc[];
-extern const INT indices[];
+extern const Polygon3cuv indices[];
 extern const WCHAR *textureFiles[];
 extern const INT tIndices[];
 

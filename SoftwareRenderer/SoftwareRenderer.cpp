@@ -14,6 +14,7 @@
 #include "Structs/Triangle.h"
 #include "Structs/Polygon3.h"
 #include "Structs/PVertex3c.h"
+#include "Structs/Polygon3cuv.h"
 #include "Structs/Model.h"
 #include "Camera.h"
 #include "SoftwareRenderer.h"
@@ -99,7 +100,7 @@ VOID SoftwareRenderer::SetClip(LONG cNear, LONG cFar) {
 	clipNear = cNear;
 	clipFar = cFar;
 
-	clipScale = 1.0f / (abs(cNear) + abs(cFar));
+	clipScale = 1.0f / (ABS(cNear) + ABS(cFar));
 }
 
 VOID SoftwareRenderer::RecalcDist() {
@@ -195,6 +196,8 @@ HRESULT SoftwareRenderer::Render() {
 			+ player.vertices[i3].posTrans.z
 		) / 3.0f;
 		player.visible[player.numVisible++] = i;
+		
+		player.CalculateNormals(FALSE);
 	}
 
 	for(INT i = 0; i < player.numVisible; ++i) {
@@ -209,27 +212,31 @@ HRESULT SoftwareRenderer::Render() {
 		}
 	}
 
-	if(player.numVisible > 0) {
-		FLOAT *zBits = (FLOAT*)zBuffer.bits;
-		DWORD *sBits = (DWORD*)mBuffer.bits;
-		
-		Triangle t;
+	if(0 == player.numVisible) {
+		SwapBuffers();
 
-		for(INT i = 0; i < player.numVisible; ++i) {
-			poly = player.visible[i];
-			
-			t.v1 = player.vertices[player.polygons[poly].verts[0]].posProj;
-			t.v2 = player.vertices[player.polygons[poly].verts[1]].posProj;
-			t.v3 = player.vertices[player.polygons[poly].verts[2]].posProj;
-			t.texId = player.textures[0].textureId;
-			
-			//FLOAT area = (sv1.x * sv2.y - sv2.x * sv1.y) + (sv2.x * sv3.y - sv3.x * sv2.y) + (sv3.x * sv1.y - sv1.x * sv3.y);
-			//if(area > 0) {
-			//	continue;
-			//}
-			
-			DrawScanLineTriangle(t);
-		}
+		return S_OK;
+	}
+		
+	Triangle t;
+
+	for(INT i = 0; i < player.numVisible; ++i) {
+		poly = player.visible[i];
+		
+		t.v1 = player.vertices[player.polygons[poly].verts[0]].posProj;
+		t.v2 = player.vertices[player.polygons[poly].verts[1]].posProj;
+		t.v3 = player.vertices[player.polygons[poly].verts[2]].posProj;
+		t.texId = player.polygons[poly].texID;
+		t.v1.u = player.polygons[poly].uvs[0].x;
+		t.v2.u = player.polygons[poly].uvs[1].x;
+		t.v3.u = player.polygons[poly].uvs[2].x;
+		t.v1.v = player.polygons[poly].uvs[0].y;
+		t.v2.v = player.polygons[poly].uvs[1].y;
+		t.v3.v = player.polygons[poly].uvs[2].y;
+		t.v1.c = player.polygons[poly].cols[0];
+		t.v2.c = player.polygons[poly].cols[1];
+		t.v3.c = player.polygons[poly].cols[2];
+		DrawScanLineTriangle(t);
 	}
 
 	SwapBuffers();
@@ -238,7 +245,7 @@ HRESULT SoftwareRenderer::Render() {
 }
 
 HRESULT SoftwareRenderer::SetupGeometry() {
-	player.numFaces = indices_size / sizeof(INT) / 3;
+	player.numFaces = indices_size / sizeof(Polygon3cuv);
 	player.numVerts = verticesc_size / sizeof(Vertex3c);
 	
 	player.vertices = new PVertex3c[player.numVerts];
@@ -248,13 +255,20 @@ HRESULT SoftwareRenderer::SetupGeometry() {
 
 	player.polygons = new Polygon3[player.numFaces];
 
-	INT j = 0;
 	for(INT i = 0; i < player.numFaces; ++i) {
-		player.polygons[i].verts[0] = indices[j];
-		player.polygons[i].verts[1] = indices[j + 1];
-		player.polygons[i].verts[2] = indices[j + 2];
-
-		j += 3;
+		player.polygons[i].verts[0] = indices[i].i1;
+		player.polygons[i].verts[1] = indices[i].i2;
+		player.polygons[i].verts[2] = indices[i].i3;
+		
+		player.polygons[i].cols[0] = indices[i].c1;
+		player.polygons[i].cols[1] = indices[i].c2;
+		player.polygons[i].cols[2] = indices[i].c3;
+		
+		player.polygons[i].uvs[0] = indices[i].uv1;
+		player.polygons[i].uvs[1] = indices[i].uv2;
+		player.polygons[i].uvs[2] = indices[i].uv3;
+		
+		player.polygons[i].texID = indices[i].tId;
 	}
 
 	player.visible = new INT[player.numFaces];
@@ -303,7 +317,6 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 	const FLOAT x1 = t.v1.x, y1 = t.v1.y, z1 = t.v1.z, u1 = t.v1.u, v1 = t.v1.v;
 	const FLOAT x2 = t.v2.x, y2 = t.v2.y, z2 = t.v2.z, u2 = t.v2.u, v2 = t.v2.v;
 	const FLOAT x3 = t.v3.x, y3 = t.v3.y, z3 = t.v3.z, u3 = t.v3.u, v3 = t.v3.v;
-	
 	const FLOAT r1 = t.v1.c.r, g1 = t.v1.c.g, b1 = t.v1.c.b, a1 = t.v1.c.a;
 	const FLOAT r2 = t.v2.c.r, g2 = t.v2.c.g, b2 = t.v2.c.b, a2 = t.v2.c.a;
 	const FLOAT r3 = t.v3.c.r, g3 = t.v3.c.g, b3 = t.v3.c.b, a3 = t.v3.c.a;
@@ -419,6 +432,12 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			
 			for(INT x = startX; x <= endX; ++x) {
 				if(zx > zBitsX[x]) {
+					/*FLOAT zp = 1.0f / zx;
+					FLOAT up = ux / zx;
+					FLOAT vp = vx / zx;
+					FLOAT u = up / zp;
+					FLOAT v = vp / zp;*/
+				
 					zBitsX[x] = zx;
 					
 					const LONG tOffset =
@@ -576,6 +595,12 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			
 			for(INT x = startX; x <= endX; ++x) {
 				if(zx > zBitsX[x]) {
+					/*FLOAT zp = 1.0f / zx;
+					FLOAT up = ux / zx;
+					FLOAT vp = vx / zx;
+					FLOAT u = up / zp;
+					FLOAT v = vp / zp;*/
+				
 					zBitsX[x] = zx;
 					
 					const LONG tOffset =

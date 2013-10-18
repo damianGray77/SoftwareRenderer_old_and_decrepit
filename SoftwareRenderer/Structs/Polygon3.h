@@ -1,11 +1,13 @@
-#ifndef SOFTWARERENDERER_POLYGON_H
-#define SOFTWARERENDERER_POLYGON_H
+#ifndef SOFTWARERENDERER_POLYGON3_H
+#define SOFTWARERENDERER_POLYGON3_H
 
 struct Polygon3 {
-	int verts[3];
+	INT verts[3];
 	Vector3	normal;
-	float cenZ;
-	int texID;
+	Vertex2 uvs[3];
+	Color4f cols[3];
+	FLOAT cenZ;
+	INT texID;
 };
 
 #endif
