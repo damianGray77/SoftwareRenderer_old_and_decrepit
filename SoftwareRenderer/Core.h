@@ -18,10 +18,10 @@
 
 #define SINCOSMAX 32767
 
-#define SIN(x) (sinTbl[(INT)x&SINCOSMAX])
-#define COS(x) (cosTbl[(INT)x&SINCOSMAX])
-#define INVSIN(x) (invSinTbl[(INT)x&SINCOSMAX])
-#define INVCOS(x) (invCosTbl[(INT)x&SINCOSMAX]) 
+#define SIN(x) (sinTbl[(INT)x & SINCOSMAX])
+#define COS(x) (cosTbl[(INT)x & SINCOSMAX])
+#define INVSIN(x) (invSinTbl[(INT)x & SINCOSMAX])
+#define INVCOS(x) (invCosTbl[(INT)x & SINCOSMAX]) 
 #define ABS(x) ((x) < 0 ? -(x) : (x))
 #define SGN(x) ((x) < 0 ? -1 : (x) > 0 ? 1 : 0)
 #define INVERSE(x) ((1.0f) / (x))
@@ -35,6 +35,9 @@
 	dst.b = src.b;						\
 	dst.a = src.a;						\
 }
+
+#define RGBAb(r, g, b, a) (((DWORD)(a)) << 24 | ((DWORD)(r)) << 16 | ((DWORD)(g)) << 8 | ((DWORD)(b)))
+#define RGB(r, g, b) (4278190080 | ((DWORD)(r)) << 16 | ((DWORD)(g)) << 8 | ((DWORD)(b)))
 
 #define MAX_HEIGHT 4096
 #define FLT_MARGIN 0 //1e-4
@@ -56,7 +59,6 @@ struct WindowProperties {
 
 FLOAT* DW2RGBAF(DWORD color);
 BYTE* DW2RGBAB(DWORD color);
-DWORD RGBAb(BYTE r, BYTE g, BYTE b, BYTE a);
 DWORD RGBAf(FLOAT r, FLOAT g, FLOAT b, FLOAT a);
 DWORD MULTIPLYRGBA(DWORD color, FLOAT r, FLOAT g, FLOAT b, FLOAT a);
 FLOAT inverseSqrt(FLOAT number);
