@@ -1,11 +1,4 @@
 #include "stdafx.h"
-#include "../Math/Matrix4x4.h"
-#include "../Math/Matrix3x3.h"
-#include "Color4f.h"
-#include "Vertex2.h"
-#include "Vertex3.h"
-#include "Vertex3c.h"
-#include "Vector3.h"
 #include "PVertex3c.h"
 
 const VOID PVertex3c::Copy(PVertex3c &v1, const PVertex3c &v2) {
@@ -15,13 +8,13 @@ const VOID PVertex3c::Copy(PVertex3c &v1, const PVertex3c &v2) {
 			, v2.position.y
 			, v2.position.z
 		}, {
-			v2.posTrans.x
-			, v2.posTrans.y
-			, v2.posTrans.z
+			v2.posWorld.x
+			, v2.posWorld.y
+			, v2.posWorld.z
 		}, {
-			v2.posProj.x
-			, v2.posProj.y
-			, v2.posProj.z
+			v2.posScreen.x
+			, v2.posScreen.y
+			, v2.posScreen.z
 		}, {
 			v2.uvMap.x
 			, v2.uvMap.y
@@ -36,6 +29,18 @@ const VOID PVertex3c::Copy(PVertex3c &v1, const PVertex3c &v2) {
 			, v2.color.b
 			, v2.color.a
 		}
+	};
+	v1 = res;
+}
+
+const VOID PVertex3c::Copy(PVertex3c &v1, const Light &l) {
+	PVertex3c res = {
+		{ l.position.x, l.position.y, l.position.z, }
+		, { 0.0f, 0.0f, 0.0f }
+		, { 0.0f, 0.0f, 0.0f }
+		, { 0.0f, 0.0f }
+		, { 0.0f, 0.0f, 0.0f }
+		, { l.color.r, l.color.g, l.color.b, l.color.a }
 	};
 	v1 = res;
 }

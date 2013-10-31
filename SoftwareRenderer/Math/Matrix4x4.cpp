@@ -97,6 +97,45 @@ const VOID Matrix4x4::Zero(Matrix4x4 &m) {
 	Set(m, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 }
 
+const VOID Matrix4x4::Invert(Matrix4x4 &m1, Matrix4x4 &m2) {
+	const FLOAT s0 = m2._00 * m2._11 - m2._10 * m2._01;
+	const FLOAT s1 = m2._00 * m2._12 - m2._10 * m2._02;
+	const FLOAT s2 = m2._00 * m2._13 - m2._10 * m2._03;
+	const FLOAT s3 = m2._01 * m2._12 - m2._11 * m2._02;
+	const FLOAT s4 = m2._01 * m2._13 - m2._11 * m2._03;
+	const FLOAT s5 = m2._02 * m2._13 - m2._12 * m2._03;
+
+	const FLOAT c5 = m2._22 * m2._33 - m2._32 * m2._23;
+	const FLOAT c4 = m2._21 * m2._33 - m2._31 * m2._23;
+	const FLOAT c3 = m2._21 * m2._32 - m2._31 * m2._22;
+	const FLOAT c2 = m2._20 * m2._33 - m2._30 * m2._23;
+	const FLOAT c1 = m2._20 * m2._32 - m2._30 * m2._22;
+	const FLOAT c0 = m2._20 * m2._31 - m2._30 * m2._21;
+
+    // Should check for 0 determinant
+
+    const FLOAT d = INVERSE(s0 * c5 - s1 * c4 + s2 * c3 + s3 * c2 - s4 * c1 + s5 * c0);
+    
+    Set(m1
+		, ( m2._11 * c5 - m2._12 * c4 + m2._13 * c3) * d
+		, ( m2._11 * c5 - m2._12 * c4 + m2._13 * c3) * d
+		, ( m2._31 * s5 - m2._32 * s4 + m2._33 * s3) * d
+		, (-m2._21 * s5 + m2._22 * s4 - m2._23 * s3) * d
+		, (-m2._10 * c5 + m2._12 * c2 - m2._13 * c1) * d
+		, ( m2._00 * c5 - m2._02 * c2 + m2._03 * c1) * d
+		, (-m2._30 * s5 + m2._32 * s2 - m2._33 * s1) * d
+		, ( m2._20 * s5 - m2._22 * s2 + m2._23 * s1) * d
+		, ( m2._10 * c4 - m2._11 * c2 + m2._13 * c0) * d
+		, (-m2._00 * c4 + m2._01 * c2 - m2._03 * c0) * d
+		, ( m2._30 * s4 - m2._31 * s2 + m2._33 * s0) * d
+		, (-m2._20 * s4 + m2._21 * s2 - m2._23 * s0) * d
+		, (-m2._10 * c3 + m2._11 * c1 - m2._12 * c0) * d
+		, ( m2._00 * c3 - m2._01 * c1 + m2._02 * c0) * d
+		, (-m2._30 * s3 + m2._31 * s1 - m2._32 * s0) * d
+		, ( m2._20 * s3 - m2._21 * s1 + m2._22 * s0) * d
+	);
+}
+
 const VOID Matrix4x4::Scale(Matrix4x4 &m, FLOAT x, FLOAT y, FLOAT z) {
 	Matrix4x4 id;
 	Identity(id);

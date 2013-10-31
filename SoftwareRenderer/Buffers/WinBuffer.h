@@ -22,6 +22,7 @@ public:
 	VOID *bits;
 	DWORD width, height;
 	DWORD mWidth, mHeight;
+	size_t size;
 	
 	LONG *yOffsets;
 };

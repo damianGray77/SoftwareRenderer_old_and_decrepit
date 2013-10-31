@@ -1,6 +1,8 @@
 #ifndef SOFTWARERENDERER_TRIANGLE_H
 #define SOFTWARERENDERER_TRIANGLE_H
 
+#include "Vertex3c.h"
+
 class Triangle {
 public:
 	Vertex3c v1;

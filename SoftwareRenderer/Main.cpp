@@ -1,22 +1,4 @@
 #include "stdafx.h"
-#include "Buffers/WinBuffer.h"
-#include "Buffers/Buffer.h"
-#include "Files/Bitmap.h"
-#include "Math/Matrix4x4.h"
-#include "Math/Matrix3x3.h"
-#include "Structs/Color4f.h"
-#include "Structs/Color4b.h"
-#include "Structs/Texture.h"
-#include "Structs/Vertex2.h"
-#include "Structs/Vertex3.h"
-#include "Structs/Vertex3c.h"
-#include "Structs/Vector3.h"
-#include "Structs/Triangle.h"
-#include "Structs/Polygon3.h"
-#include "Structs/PVertex3c.h"
-#include "Structs/Model.h"
-#include "Camera.h"
-#include "SoftwareRenderer.h"
 #include "Main.h"
 
 VOID InitWindow() {
@@ -107,7 +89,7 @@ VOID CalculateFrameRate() {
     if(currentTime - lastTime > 1.0f) {
 	    lastTime = currentTime;
 
-		swprintf(strFrameRate, L"Current Frames Per Second: %d", int(fps));
+		swprintf(strFrameRate, sizeof(WCHAR) * 50, L"Current Frames Per Second: %d", int(fps));
 		SetWindowTextW(props.hWnd, strFrameRate);
         fps = 0;
     }
@@ -196,7 +178,7 @@ INT WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR cmdLine, INT cmdshow) {
 
 	//ShowCursor(FALSE);
 
-	g_Camera.PositionCamera(0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+	g_Camera.PositionCamera(0.0f, 0.0f, 9.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 
 	par = MainLoop();
 

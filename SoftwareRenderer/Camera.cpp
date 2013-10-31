@@ -1,8 +1,4 @@
 #include "stdafx.h"
-#include "Math/Matrix4x4.h"
-#include "Math/Matrix3x3.h"
-#include "Structs/Vertex3.h"
-#include "Structs/Vector3.h"
 #include "Camera.h"
 
 Camera::Camera() {
@@ -18,7 +14,7 @@ Camera::Camera() {
 VOID Camera::PositionCamera(FLOAT positionX, FLOAT positionY, FLOAT positionZ, FLOAT viewX, FLOAT viewY, FLOAT viewZ, FLOAT upVectorX, FLOAT upVectorY, FLOAT upVectorZ) {
 	Vector3 vPos	= { positionX, positionY, positionZ };
 	Vector3 vView	= { viewX, viewY, viewZ };
-	Vector3 vUp	= { upVectorX, upVectorY, upVectorZ };
+	Vector3 vUp		= { upVectorX, upVectorY, upVectorZ };
 
 	position = vPos;
 	view = vView;

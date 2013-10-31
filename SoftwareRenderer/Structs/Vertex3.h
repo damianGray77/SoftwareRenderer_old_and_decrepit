@@ -1,6 +1,9 @@
 #ifndef SOFTWARERENDERER_VERTEX3_H
 #define SOFTWARERENDERER_VERTEX3_H
 
+#include "../Math/Matrix4x4.h"
+#include "../Math/Matrix3x3.h"
+
 class Vertex3 {
 public:
 	FLOAT x, y, z;

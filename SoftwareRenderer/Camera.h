@@ -1,6 +1,9 @@
 #ifndef SOFTWARERENDERER_CAMERA_H
 #define SOFTWARERENDERER_CAMERA_H
 
+#include "Structs/Vertex3.h"
+#include "Structs/Vector3.h"
+
 class Camera {
 public:
 	Camera();

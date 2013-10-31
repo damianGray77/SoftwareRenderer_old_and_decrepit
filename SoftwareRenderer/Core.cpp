@@ -1,8 +1,4 @@
 #include "stdafx.h"
-#include "Structs/Color4f.h"
-#include "Structs/Vertex3c.h"
-#include "Structs/Vertex2.h"
-#include "Structs/Polygon3cuv.h"
 #include "Core.h"
 
 DWORD RGBAf(FLOAT r, FLOAT g, FLOAT b, FLOAT a) {
@@ -218,7 +214,12 @@ const WCHAR *textureFiles[] = {
 
 const INT tIndices[] = { 0 };
 
+const Light lights[] = {
+	{ { 2.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f, 1.0f } }
+};
+
 const size_t verticesc_size = sizeof(verticesc);
 const size_t indices_size = sizeof(indices);
 const size_t textureFiles_size = sizeof(textureFiles);
 const size_t tIndices_size = sizeof(tIndices);
+const size_t lights_size = sizeof(lights);

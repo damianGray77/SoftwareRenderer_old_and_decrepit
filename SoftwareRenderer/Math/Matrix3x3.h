@@ -1,6 +1,8 @@
 #ifndef SOFTWARERENDERER_MATRIX3X3_H
 #define SOFTWARERENDERER_MATRIX3X3_H
 
+#include "Matrix4x4.h"
+
 class Matrix3x3 {
 public:
 	union {

@@ -1,6 +1,10 @@
 #ifndef SOFTWARERENDERER_CORE_H
 #define SOFTWARERENDERER_CORE_H
 
+#include "Structs/Vertex3c.h"
+#include "Structs/Polygon3cuv.h"
+#include "Structs/Light.h"
+
 #define DOUBLE double
 
 #define SWAP(type, i, j) { type _temp_var = i; i = j; j = _temp_var; }
@@ -37,7 +41,7 @@
 }
 
 #define RGBAb(r, g, b, a) (((DWORD)(a)) << 24 | ((DWORD)(r)) << 16 | ((DWORD)(g)) << 8 | ((DWORD)(b)))
-#define RGB(r, g, b) (4278190080 | ((DWORD)(r)) << 16 | ((DWORD)(g)) << 8 | ((DWORD)(b)))
+#define RGBd(r, g, b) (4278190080 | ((DWORD)(r)) << 16 | ((DWORD)(g)) << 8 | ((DWORD)(b)))
 
 #define MAX_HEIGHT 4096
 #define FLT_MARGIN 0 //1e-4
@@ -73,17 +77,16 @@ extern BOOL paused;
 
 extern WindowProperties props;
 
-class Vertex3c;
-class Polygon3cuv;
-
 extern const Vertex3c verticesc[];
 extern const Polygon3cuv indices[];
 extern const WCHAR *textureFiles[];
 extern const INT tIndices[];
+extern const Light lights[];
 
 extern const size_t verticesc_size;
 extern const size_t indices_size;
 extern const size_t textureFiles_size;
 extern const size_t tIndices_size;
+extern const size_t lights_size;
 
 #endif

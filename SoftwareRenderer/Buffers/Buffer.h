@@ -18,6 +18,7 @@ public:
 	FLOAT *buf;
 	DWORD width, height;
 	DWORD mWidth, mHeight;
+	size_t size;
 	
 	LONG *yOffsets;
 };

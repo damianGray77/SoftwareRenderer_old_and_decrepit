@@ -1,6 +1,10 @@
 #ifndef SOFTWARERENDERER_VECTOR3_H
 #define SOFTWARERENDERER_VECTOR3_H
 
+#include "../Math/Matrix4x4.h"
+#include "../Math/Matrix3x3.h"
+#include "Vertex3.h"
+
 class Vector3 {
 public:
 	FLOAT x, y, z;

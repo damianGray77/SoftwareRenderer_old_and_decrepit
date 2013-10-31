@@ -1,6 +1,9 @@
 #ifndef SOFTWARERENDERER_MAIN_H
 #define SOFTWARERENDERER_MAIN_H
 
+#include "Camera.h"
+#include "SoftwareRenderer.h"
+
 VOID InitWindow();
 VOID DeInitWindow();
 VOID ChangeToFullScreen();

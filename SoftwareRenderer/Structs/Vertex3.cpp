@@ -1,7 +1,4 @@
 #include "stdafx.h"
-#include "../Math/Matrix4x4.h"
-#include "../Math/Matrix3x3.h"
-
 #include "Vertex3.h"
 
 const Vertex3 Vertex3::operator +(const Vertex3 &v) {

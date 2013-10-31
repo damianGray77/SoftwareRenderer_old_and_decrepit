@@ -1,7 +1,2 @@
 #include "stdafx.h"
-#include "../Math/Matrix4x4.h"
-#include "../Math/Matrix3x3.h"
-#include "Vertex2.h"
-#include "Vertex3.h"
-#include "Vector3.h"
 #include "PVertex3.h"

@@ -1,6 +1,9 @@
 #ifndef SOFTWARERENDERER_POLYGON3CUV_H
 #define SOFTWARERENDERER_POLYGON3CUV_H
 
+#include "Color4f.h"
+#include "Vertex2.h"
+
 class Polygon3cuv {
 public:
 	INT i1, i2, i3;

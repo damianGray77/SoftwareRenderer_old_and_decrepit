@@ -26,6 +26,7 @@ public:
 	static const VOID Copy(Matrix4x4 &m1, Matrix4x4 &m2);
 	static const VOID Identity(Matrix4x4 &m);
 	static const VOID Zero(Matrix4x4 &m);
+	static const VOID Invert(Matrix4x4 &m1, Matrix4x4 &m2);
 	static const VOID Scale(Matrix4x4 &m, FLOAT x, FLOAT y, FLOAT z);
 	static const VOID Translate(Matrix4x4 &m, FLOAT x, FLOAT y, FLOAT z);
 	static const VOID Rotate(Matrix4x4 &m, FLOAT x, FLOAT y, FLOAT z);

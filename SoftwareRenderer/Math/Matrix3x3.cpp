@@ -1,5 +1,4 @@
 #include "stdafx.h"
-#include "Matrix4x4.h"
 #include "Matrix3x3.h"
 
 const VOID Matrix3x3::Set(Matrix3x3 &m, FLOAT _00, FLOAT _01, FLOAT _02, FLOAT _10, FLOAT _11, FLOAT _12, FLOAT _20, FLOAT _21, FLOAT _22) {

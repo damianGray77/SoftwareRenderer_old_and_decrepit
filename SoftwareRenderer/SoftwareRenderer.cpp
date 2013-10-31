@@ -1,22 +1,4 @@
 #include "stdafx.h"
-#include "Buffers/WinBuffer.h"
-#include "Buffers/Buffer.h"
-#include "Files/Bitmap.h"
-#include "Math/Matrix4x4.h"
-#include "Math/Matrix3x3.h"
-#include "Structs/Color4f.h"
-#include "Structs/Color4b.h"
-#include "Structs/Texture.h"
-#include "Structs/Vertex2.h"
-#include "Structs/Vertex3.h"
-#include "Structs/Vertex3c.h"
-#include "Structs/Vector3.h"
-#include "Structs/Triangle.h"
-#include "Structs/Polygon3.h"
-#include "Structs/PVertex3c.h"
-#include "Structs/Polygon3cuv.h"
-#include "Structs/Model.h"
-#include "Camera.h"
 #include "SoftwareRenderer.h"
 
 inline INT iRound(FLOAT x) {
@@ -37,13 +19,14 @@ HRESULT SoftwareRenderer::Init() {
 
 	if(
 		FAILED(CreateBuffer(mBuffer))
-		|| FAILED(CreateBuffer(cBuffer))
 		|| !CreateBuffer(zBuffer)
 	) {
 		return E_FAIL;
 	}
 
 	SetFov(SINCOSMAX / 16);
+	
+	numLights = lights_size / sizeof(Light);
 	
 	SetClip(0, 100);
 
@@ -110,49 +93,46 @@ VOID SoftwareRenderer::RecalcDist() {
 	dist = cotFOV * mBuffer.mHeight;
 }
 
-VOID SoftwareRenderer::Project(const INT i) {
-	Vertex3c &sCoords = player.vertices[i].posProj;
-	Vertex3 &coords = player.vertices[i].posTrans;
-	const Vertex2 &uvMap = player.vertices[i].uvMap;
-	const Color4f &color = player.vertices[i].color;
+VOID SoftwareRenderer::Project(PVertex3c &v) {
+	Vertex3 &screen = v.posScreen;
+	Vertex3 &world = v.posWorld;
+
+	world = v.position * mWorld;
 	
-	coords = player.vertices[i].position * mWorld;
-	
-	if(0 == coords.z) {
+	if(0 == world.z) {
 		return;
 	}
 
-	FLOAT z = INVERSE(coords.z) * dist;
+	const FLOAT z = dist / world.z;
 
-	sCoords.x = (coords.x * z) + mBuffer.mWidth;
-	sCoords.y = (-coords.y * z) + mBuffer.mHeight;
-	sCoords.z = coords.z;
-
-	sCoords.c = color;
-	sCoords.u = uvMap.x;
-	sCoords.v = uvMap.y;
+	screen.x = (world.x * z) + mBuffer.mWidth;
+	screen.y = (-world.y * z) + mBuffer.mHeight;
+	screen.z = world.z;
 }
 
 VOID SoftwareRenderer::Clear(DWORD color) {
 	mBuffer.Clear(color);
-	cBuffer.Clear(color);
 	zBuffer.Clear(0.0f);
 }
 
 HRESULT SoftwareRenderer::Render() {
+	// in an actual 'level' there will be no space on the screen without
+	// something in it so clearing the draw buffer is an unnecessary step.
 	Clear(0xff000000);
 
-	static FLOAT rX = 1.0f, rY = 0.5f, rZ = 0.25f;
+	// however, the zBuffer still does need clearing on each frame.
+	//zBuffer.Clear(0.0f);
+
+	static FLOAT rX = 1000.0f, rY = 1000.0f, rZ = 1000.0f;
 
 	Matrix4x4::Identity(mWorld);
 	Matrix4x4::Rotate(mWorld, rX, rY, rZ);
 	Matrix4x4::Translate(mWorld, g_Camera.Position().x, g_Camera.Position().y, g_Camera.Position().z);
 	
-	Matrix3x3::Copy(mWorldRot, mWorld);
+	/*Matrix4x4::Identity(mWorldInv);
+	Matrix4x4::Rotate(mWorldInv, -rX, -rY, -rZ);
+	Matrix4x4::Translate(mWorldInv, -g_Camera.Position().x, -g_Camera.Position().y, -g_Camera.Position().z);*/
 	
-	//Matrix4x4::Translate(mWorldInv, -g_Camera.Position().x, -g_Camera.Position().y, -g_Camera.Position().z);
-	//Matrix4x4::Rotate(mWorldInv, -rX, -rY, -rZ);
-
 	rX += 50.0f; if(rX > SINCOSMAX) { rX -= SINCOSMAX; }
 	rY += 25.0f; if(rY > SINCOSMAX) { rY -= SINCOSMAX; }
 	rZ += 12.5f; if(rZ > SINCOSMAX) { rZ -= SINCOSMAX; }
@@ -162,26 +142,27 @@ HRESULT SoftwareRenderer::Render() {
 	INT i1, i2, i3;
 	FLOAT biggest;
 	INT poly;
-	Vertex3c sv1, sv2, sv3;
+	Vertex3 sv1, sv2, sv3;
 	FLOAT area;
-
+	
+	/*player.CalculateNormals(TRUE);
+	
+	for(INT i = 0; i < player.numLights; ++i) {
+		Project(player.lights[i]);
+	}*/
+	
 	for(INT i = 0; i < player.numFaces; ++i) {
-		/*FLOAT dot = Vector3::Dot(g_Camera.Position(), player.polygons[i].normal * mWorldRot);
-		if(dot > 0.0f) {
-			continue;
-		}*/
-
 		i1 = player.polygons[i].verts[0];
 		i2 = player.polygons[i].verts[1];
 		i3 = player.polygons[i].verts[2];
 		
-		Project(i1);
-		Project(i2);
-		Project(i3);
+		Project(player.vertices[i1]);
+		Project(player.vertices[i2]);
+		Project(player.vertices[i3]);
 		
-		sv1 = player.vertices[i1].posProj;
-		sv2 = player.vertices[i2].posProj;
-		sv3 = player.vertices[i3].posProj;
+		sv1 = player.vertices[i1].posScreen;
+		sv2 = player.vertices[i2].posScreen;
+		sv3 = player.vertices[i3].posScreen;
 		
 		area = sv1.x * sv2.y - sv2.x * sv1.y;
 		area += sv2.x * sv3.y - sv3.x * sv2.y;
@@ -191,13 +172,17 @@ HRESULT SoftwareRenderer::Render() {
 		}
 
 		player.polygons[i].cenZ = (
-			player.vertices[i1].posTrans.z
-			+ player.vertices[i2].posTrans.z
-			+ player.vertices[i3].posTrans.z
-		) / 3.0f;
-		player.visible[player.numVisible++] = i;
+			player.vertices[i1].posWorld.z
+			+ player.vertices[i2].posWorld.z
+			+ player.vertices[i3].posWorld.z
+		) * 0.333333f;
+		player.visible[player.numVisible] = i;
 		
-		player.CalculateNormals(FALSE);
+		/*for(INT j = 0; j < player.numLights; ++j) {
+			CalculatePolygonLight(i, player.lights[j]);
+		}*/
+		
+		++player.numVisible;
 	}
 
 	for(INT i = 0; i < player.numVisible; ++i) {
@@ -211,7 +196,7 @@ HRESULT SoftwareRenderer::Render() {
 			}
 		}
 	}
-
+	
 	if(0 == player.numVisible) {
 		SwapBuffers();
 
@@ -222,32 +207,128 @@ HRESULT SoftwareRenderer::Render() {
 
 	for(INT i = 0; i < player.numVisible; ++i) {
 		poly = player.visible[i];
+		Polygon3 p = player.polygons[poly];
+		Vertex3 v1 = player.vertices[p.verts[0]].posScreen;
+		Vertex3 v2 = player.vertices[p.verts[1]].posScreen;
+		Vertex3 v3 = player.vertices[p.verts[2]].posScreen;
 		
-		t.v1 = player.vertices[player.polygons[poly].verts[0]].posProj;
-		t.v2 = player.vertices[player.polygons[poly].verts[1]].posProj;
-		t.v3 = player.vertices[player.polygons[poly].verts[2]].posProj;
-		t.texId = player.polygons[poly].texID;
-		t.v1.u = player.polygons[poly].uvs[0].x;
-		t.v2.u = player.polygons[poly].uvs[1].x;
-		t.v3.u = player.polygons[poly].uvs[2].x;
-		t.v1.v = player.polygons[poly].uvs[0].y;
-		t.v2.v = player.polygons[poly].uvs[1].y;
-		t.v3.v = player.polygons[poly].uvs[2].y;
-		t.v1.c = player.polygons[poly].cols[0];
-		t.v2.c = player.polygons[poly].cols[1];
-		t.v3.c = player.polygons[poly].cols[2];
-		DrawScanLineTriangle(t);
+		Vertex3c vc1 = { v1.x, v1.y, v1.z, p.uvs[0].x, p.uvs[0].y, p.cols[0] };
+		Vertex3c vc2 = { v2.x, v2.y, v2.z, p.uvs[1].x, p.uvs[1].y, p.cols[1] };
+		Vertex3c vc3 = { v3.x, v3.y, v3.z, p.uvs[2].x, p.uvs[2].y, p.cols[2] };
+		
+		t.v1 = vc1;
+		t.v2 = vc2;
+		t.v3 = vc3;
+		t.texId = p.texID;
+		
+		/*const INT minX = MAX(0, (INT)(MIN(MIN(t.v1.x, t.v2.x), t.v3.x)));
+		const INT maxX = MIN(width, (INT)(MAX(MAX(t.v1.x, t.v2.x), t.v3.x)));
+		const INT minY = MAX(0, (INT)(MIN(MIN(t.v1.y, t.v2.y), t.v3.y)));
+		const INT maxY = MIN(height, (INT)(MAX(MAX(t.v1.y, t.v2.y), t.v3.y)));
+		
+		if(maxX - minX > maxY - minY) {*/
+			DrawScanLineTriangle(t);
+		/*} else {
+			DrawScanLineTriangleX(t);
+		}*/
+		//DrawScanLineTriangleFlat(t);
 		//DrawHalfSpaceTriangle(t);
 	}
+	
+	/*for(INT i = 0; i < player.numLights; ++i) {
+		PVertex3c v = player.lights[i];
+
+		Vertex2 v1 = { v.posScreen.x - 10, v.posScreen.y };
+		Vertex2 v2 = { v.posScreen.x + 10, v.posScreen.y };
+		DrawLine(v1, v2, 0xffffff00);
+		
+		Vertex2 v3 = { v.posScreen.x, v.posScreen.y - 10 };
+		Vertex2 v4 = { v.posScreen.x, v.posScreen.y + 10 };
+		DrawLine(v3, v4, 0xffffff00);
+	}
+	
+	for(INT i = 0; i < player.numFaces; ++i) {
+		Polygon3 p = player.polygons[i];
+		Vertex3 v1 = player.vertices[p.verts[0]].posScreen;
+		Vertex3 v2 = player.vertices[p.verts[1]].posScreen;
+		Vertex3 v3 = player.vertices[p.verts[2]].posScreen;
+		
+		Vertex2 v21 = { v1.x, v1.y };
+		Vertex2 v22 = { v2.x, v2.y };
+		Vertex2 v23 = { v3.x, v3.y };
+		
+		DrawLine(v21, v22, 0xffffffff);
+		DrawLine(v22, v23, 0xffffffff);
+		DrawLine(v23, v21, 0xffffffff);
+		
+		Vertex2 vn1 = {
+			(v1.x + v2.x + v3.x) * 0.33333f
+			, (v1.y + v2.y + v3.y) * 0.33333f
+		};
+		
+		Vector3 n = player.polygons[i].normal * mWorldInv;
+		
+		Vertex2 vn2 = {
+			vn1.x + n.x * 100
+			, vn1.y + n.y * 100
+		};
+		
+		DrawLine(vn1, vn2, 0xffffff00);
+	}*/
 
 	SwapBuffers();
 
 	return S_OK;
 }
 
+VOID SoftwareRenderer::CalculatePolygonLight(const INT i, const PVertex3c &light) {
+	for(INT j = 0; j < 3; ++j) {
+		Vector3 vPos = {
+			player.vertices[player.polygons[i].verts[j]].posWorld.x
+			, player.vertices[player.polygons[i].verts[j]].posWorld.y
+			, player.vertices[player.polygons[i].verts[j]].posWorld.z
+		};
+		
+		vPos = Vector3::Normal(vPos);
+		
+		Vector3 lPos = {
+			light.posWorld.x
+			, light.posWorld.y
+			, light.posWorld.z
+		};
+		
+		lPos = Vector3::Normal(lPos);
+		
+		Vector3 dir = vPos - lPos;
+		FLOAT dot = Vector3::Dot(player.vertices[player.polygons[i].verts[j]].normal, dir);
+		FLOAT intensity = MAX(0.0f, dot);
+	    
+		player.polygons[i].cols[j].r = light.color.r * intensity; 
+		player.polygons[i].cols[j].g = light.color.g * intensity;
+		player.polygons[i].cols[j].b = light.color.b * intensity;
+	}
+    //player.vertices[i].color.a = 1.0f;
+}
+
+/*FLOAT ComputeNDotL(Vector3 vertex, Vector3 normal, Vector3 lightPosition) 
+{
+    var lightDirection = lightPosition - vertex;
+
+    normal.Normalize();
+    lightDirection.Normalize();
+
+    return Math.Max(0, Vector3.Dot(normal, lightDirection));
+}*/
+
 HRESULT SoftwareRenderer::SetupGeometry() {
 	player.numFaces = indices_size / sizeof(Polygon3cuv);
 	player.numVerts = verticesc_size / sizeof(Vertex3c);
+	player.numLights = lights_size / sizeof(Light);
+	
+	player.lights = new PVertex3c[player.numLights];
+	for(INT i = 0; i < player.numLights; ++i) {
+		PVertex3c::Copy(player.lights[i], lights[i]);
+	}
 	
 	player.vertices = new PVertex3c[player.numVerts];
 	for(INT i = 0; i < player.numVerts; ++i) {
@@ -298,18 +379,156 @@ HRESULT SoftwareRenderer::SetupTextures() {
 	return S_OK;
 }
 
+VOID SoftwareRenderer::DrawScanLineTriangleFlat(Triangle &t) {
+	if(t.v1.y > t.v2.y) { SWAP(Vertex3c, t.v1, t.v2); }
+	if(t.v1.y > t.v3.y) { SWAP(Vertex3c, t.v1, t.v3); }
+	if(t.v2.y > t.v3.y) { SWAP(Vertex3c, t.v2, t.v3); }
+	
+	if(t.v3.y <= t.v1.y || t.v3.y <= 0 || t.v1.y >= height) {
+		return;
+	}
+
+	const FLOAT x1 = t.v1.x, y1 = t.v1.y;
+	const FLOAT x2 = t.v2.x, y2 = t.v2.y;
+	const FLOAT x3 = t.v3.x, y3 = t.v3.y;
+
+	BOOL swapX = FALSE;
+
+	DWORD *dBitsY, *dBits = (DWORD *)mBuffer.bits;
+		
+	const FLOAT dy1 = 1.0f / (y3 - y1);
+	
+	FLOAT sx2, sx1 = (x3 - x1) * dy1;
+	FLOAT xx2, xx1;
+	
+	FLOAT subX, subY;
+	INT startX, startY;
+	INT endX, endY;
+	
+	if(y2 != y1) {
+		endY = (y2 >= height
+			? height
+			: (INT)ceil(y2)
+		) - 1;
+		if(y1 <= 0) {
+			startY = 0;
+			subY = -y1;
+		} else {
+			startY = (INT)ceil(y1);
+			subY = (FLOAT)startY - y1;
+		}
+		
+		const FLOAT dy2 = 1.0f / (y2 - y1);
+		sx2 = (x2 - x1) * dy2;
+		if(sx2 < sx1) {
+			SWAP(FLOAT, sx1, sx2);
+			
+			swapX = TRUE;
+		}
+		
+		xx1 = x1 + (sx1 * subY);
+		xx2 = x1 + (sx2 * subY);
+		
+		dBitsY = dBits + mBuffer.yOffsets[startY];
+		
+		for(INT y = startY; y <= endY; ++y) {
+			const FLOAT dx = 1.0f / (xx2 - xx1);
+			
+			endX = (xx2 >= width
+				? width
+				: (INT)ceil(xx2)
+			) - 1;
+			if(xx1 <= 0) {
+				startX = 0;
+				subX = -xx1;
+			} else {
+				startX = (INT)ceil(xx1);
+				subX = (FLOAT)startX - xx1;
+			}
+			
+			for(INT x = startX; x <= endX; ++x) {
+				dBitsY[x] = 0xff007f00;
+			}
+
+			xx1 += sx1;
+			xx2 += sx2;
+			
+			dBitsY += width;
+		}
+		
+		if(TRUE == swapX) {
+			xx1 = xx2;
+			sx1 = sx2;
+		}
+	}
+
+	if(y3 != y2) {
+		endY = (y3 >= height
+			? height
+			: (INT)ceil(y3)
+		) - 1;
+		if(y2 <= 0) {
+			startY = 0;
+			subY = -y2;
+		} else {
+			startY = (INT)ceil(y2);
+			subY = (FLOAT)startY - y2;
+		}
+		
+		const FLOAT dy2 = 1.0f / (y3 - y2);
+		const FLOAT dy = y2 != y1 ? ((FLOAT)startY - y1) : subY;
+		sx2 = (x3 - x2) * dy2;
+		if(TRUE == swapX) {
+			SWAP(FLOAT, sx1, sx2);
+			
+			xx1 = x2 + (sx1 * subY);
+			xx2 = x1 + (sx2 * dy);
+		} else {
+			xx1 = x1 + (sx1 * dy);
+			xx2 = x2 + (sx2 * subY);
+		}
+		
+		dBitsY = dBits + mBuffer.yOffsets[startY];
+
+		for(INT y = startY; y <= endY; ++y) {
+			const FLOAT dx = 1.0f / (xx2 - xx1);
+
+			endX = (xx2 >= width
+				? width
+				: (INT)ceil(xx2)
+			) - 1;
+			if(xx1 <= 0) {
+				startX = 0;
+				subX = -xx1;
+			} else {
+				startX = (INT)ceil(xx1);
+				subX = (FLOAT)startX - xx1;
+			}
+			
+			for(INT x = startX; x <= endX; ++x) {
+				dBitsY[x] = 0xff007f00;
+			}
+
+			xx1 += sx1;
+			xx2 += sx2;
+
+			dBitsY += width;
+		}
+	}
+}
+
 VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 	if(t.v1.y > t.v2.y) { SWAP(Vertex3c, t.v1, t.v2); }
 	if(t.v1.y > t.v3.y) { SWAP(Vertex3c, t.v1, t.v3); }
 	if(t.v2.y > t.v3.y) { SWAP(Vertex3c, t.v2, t.v3); }
 	
-	if(t.v3.y <= t.v1.y) {
+	if(t.v3.y <= t.v1.y || t.v3.y <= 0 || t.v1.y >= height) {
 		return;
 	}
 	
-	const FLOAT z1 = 1.0f / t.v1.z;
-	const FLOAT z2 = 1.0f / t.v2.z;
-	const FLOAT z3 = 1.0f / t.v3.z;
+	const FLOAT z1 = 1.0f / (t.v1.z);
+	const FLOAT z2 = 1.0f / (t.v2.z);
+	const FLOAT z3 = 1.0f / (t.v3.z);
 	
 	if(!(
 		(z1 >= 0.0f && z1 <= 1.0f)
@@ -335,10 +554,10 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 	const INT tWidth = texture -> infoHeader.biWidth - 1;
 	const INT tHeight = texture -> infoHeader.biHeight - 1;
 	const BYTE *tBits = (BYTE *)texture -> data;
-	FLOAT *zBits = (FLOAT *)zBuffer.bits;
-	DWORD *dBits = (DWORD *)mBuffer.bits;
+	FLOAT *zBitsY, *zBits = (FLOAT *)zBuffer.bits;
+	DWORD *dBitsY, *dBits = (DWORD *)mBuffer.bits;
 		
-	const FLOAT dy1 = INVERSE(y3 - y1);
+	const FLOAT dy1 = 1.0f / (y3 - y1);
 	
 	FLOAT sx1 = (x3 - x1) * dy1;
 	FLOAT sz1 = (z3 - z1) * dy1;
@@ -349,34 +568,31 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 	FLOAT sb1 = (b3 - b1) * dy1;
 	//FLOAT sa1 = (a3 - a1) * dy1;
 	
+	FLOAT sx2, sz2, su2, sv2;
+	FLOAT sr2, sg2, sb2;//, sa2;
+	
 	FLOAT xx1 = x1, zz1 = z1;
 	FLOAT uu1 = u1, vv1 = v1;
 	FLOAT rr1 = r1, gg1 = g1;
 	FLOAT bb1 = b1;//, aa1 = a1;
 	
+	FLOAT xx2, zz2, uu2, vv2;
+	FLOAT rr2, gg2, bb2;//, aa2;
+	
+	FLOAT zx, ux, vx;
+	FLOAT rx, gx, bx;//, ax;
+	
+	FLOAT swap;
+	
+	FLOAT subX, subY;
+	INT startX, startY;
+	INT endX, endY;
+	
 	if(y2 != y1) {
-		const FLOAT dy2 = INVERSE(y2 - y1);
-		
-		FLOAT sx2 = (x2 - x1) * dy2;
-		FLOAT sz2 = (z2 - z1) * dy2;
-		FLOAT su2 = (u2 - u1) * dy2;
-		FLOAT sv2 = (v2 - v1) * dy2;
-		FLOAT sr2 = (r2 - r1) * dy2;
-		FLOAT sg2 = (g2 - g1) * dy2;
-		FLOAT sb2 = (b2 - b1) * dy2;
-		//FLOAT sa2 = (a2 - a1) * dy2;
-		
-		FLOAT xx2 = x1, zz2 = z1;
-		FLOAT uu2 = u1, vv2 = v1;
-		FLOAT rr2 = r1, gg2 = g1;
-		FLOAT bb2 = b1;//, aa2 = a1;
-		
-		INT endY = y2 >= height
-			? height - 1
-			: (INT)ceil(y2) - 1
-		;
-		FLOAT subY;
-		INT startY;
+		endY = (y2 >= height
+			? height
+			: (INT)ceil(y2)
+		) - 1;
 		if(y1 <= 0) {
 			subY = -y1;
 			startY = 0;
@@ -384,30 +600,42 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			startY = (INT)ceil(y1);
 			subY = (FLOAT)startY - y1;
 		}
-
-		xx1 += sx1 * subY; xx2 += sx2 * subY;
-		zz1 += sz1 * subY; zz2 += sz2 * subY;
-		uu1 += su1 * subY; uu2 += su2 * subY;
-		vv1 += sv1 * subY; vv2 += sv2 * subY;
-		rr1 += sr1 * subY; rr2 += sr2 * subY;
-		gg1 += sg1 * subY; gg2 += sg2 * subY;
-		bb1 += sb1 * subY; bb2 += sb2 * subY;
-		//aa1 += sa1 * subY; aa2 += sa2 * subY;
 		
+		const FLOAT dy2 = 1.0f / (y2 - y1);
+		sx2 = (x2 - x1) * dy2;
 		if(sx2 < sx1) {
-			SWAP(FLOAT, xx1, xx2); SWAP(FLOAT, sx1, sx2);
-			SWAP(FLOAT, zz1, zz2); SWAP(FLOAT, sz1, sz2);
-			SWAP(FLOAT, uu1, uu2); SWAP(FLOAT, su1, su2);
-			SWAP(FLOAT, vv1, vv2); SWAP(FLOAT, sv1, sv2);
-			SWAP(FLOAT, rr1, rr2); SWAP(FLOAT, sr1, sr2);
-			SWAP(FLOAT, gg1, gg2); SWAP(FLOAT, sg1, sg2);
-			SWAP(FLOAT, bb1, bb2); SWAP(FLOAT, sb1, sb2);
-			//SWAP(FLOAT, aa1, aa2); SWAP(FLOAT, sa1, sa2);
+			swap = sx1; sx1 = sx2; sx2 = swap;
+
+			sz2 = sz1; sz1 = (z2 - z1) * dy2;
+			su2 = su1; su1 = (u2 - u1) * dy2;
+			sv2 = sv1; sv1 = (v2 - v1) * dy2;
+			sr2 = sr1; sr1 = (r2 - r1) * dy2;
+			sg2 = sg1; sg1 = (g2 - g1) * dy2;
+			sb2 = sb1; sb1 = (b2 - b1) * dy2;
+			//sa2 = sa1; sa1 = (a2 - a1) * dy2;
+			
 			swapX = TRUE;
+		} else {
+			sz2 = (z2 - z1) * dy2; su2 = (u2 - u1) * dy2;
+			sv2 = (v2 - v1) * dy2; sr2 = (r2 - r1) * dy2;
+			sg2 = (g2 - g1) * dy2; sb2 = (b2 - b1) * dy2;
+			//sa2 = (a2 - a1) * dy2;
 		}
 		
+		xx2 = x1 + (sx2 * subY); xx1 = x1 + (sx1 * subY);
+		zz2 = z1 + (sz2 * subY); zz1 = z1 + (sz1 * subY);
+		uu2 = u1 + (su2 * subY); uu1 = u1 + (su1 * subY);
+		vv2 = v1 + (sv2 * subY); vv1 = v1 + (sv1 * subY);
+		rr2 = r1 + (sr2 * subY); rr1 = r1 + (sr1 * subY);
+		gg2 = g1 + (sg2 * subY); gg1 = g1 + (sg1 * subY);
+		bb2 = b1 + (sb2 * subY); bb1 = b1 + (sb1 * subY);
+		//aa2 = a1 + (sa2 * subY); aa1 = a1 + (sa1 * subY);
+		
+		zBitsY = zBits + mBuffer.yOffsets[startY];
+		dBitsY = dBits + mBuffer.yOffsets[startY];
+		
 		for(INT y = startY; y <= endY; ++y) {
-			const FLOAT dx = INVERSE(xx2 - xx1);
+			const FLOAT dx = 1.0f / (xx2 - xx1);
 			
 			const FLOAT szx = (zz2 - zz1) * dx;
 			const FLOAT sux = (uu2 - uu1) * dx;
@@ -417,20 +645,10 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			const FLOAT sbx = (bb2 - bb1) * dx;
 			//const FLOAT sax = (aa2 - aa1) * dx;
 			
-			FLOAT zx = zz1;
-			FLOAT ux = uu1;
-			FLOAT vx = vv1;
-			FLOAT rx = rr1;
-			FLOAT gx = gg1;
-			FLOAT bx = bb1;
-			//FLOAT ax = aa1;
-
-			INT endX = xx2 >= width
-				? width - 1
-				: (INT)ceil(xx2) - 1
-			;
-			FLOAT subX;
-			INT startX;
+			endX = (xx2 >= width
+				? width
+				: (INT)ceil(xx2)
+			) - 1;
 			if(xx1 <= 0) {
 				subX = -xx1;
 				startX = 0;
@@ -439,54 +657,39 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 				subX = (FLOAT)startX - xx1;
 			}
 			
-			zx += szx * subX;
-			ux += sux * subX;
-			vx += svx * subX;
-			rx += srx * subX;
-			gx += sgx * subX;
-			bx += sbx * subX;
-			//ax += sax * subX;
-			
-			FLOAT *zBitsX = zBits + zBuffer.yOffsets[y];
-			DWORD *dBitsX = dBits + mBuffer.yOffsets[y];
+			zx = zz1 + (szx * subX);
+			ux = uu1 + (sux * subX);
+			vx = vv1 + (svx * subX);
+			rx = rr1 + (srx * subX);
+			gx = gg1 + (sgx * subX);
+			bx = bb1 + (sbx * subX);
+			//ax = aa1 + (sax * subX);
 			
 			for(INT x = startX; x <= endX; ++x) {
-				if(zx < 1.0f && zx > zBitsX[x]) {
-					FLOAT zp = 1.0f / zx;
-					INT u = (INT)(ux * zp);
-					INT v = (INT)(vx * zp);
+				if(zx < 1.0f && zx > zBitsY[x]) {
+					const FLOAT zp = 1.0f / zx;
+					const INT u = (INT)(ux * zp);
+					const INT v = (INT)(vx * zp);
 					
-					if(u < 0) {
-						u = 0;
-					} else if(u > tWidth) {
-						u = tWidth;
-					}
-					if(v < 0) {
-						v = 0;
-					} else if(v > tHeight) {
-						v = tHeight;
-					}
-				
-					zBitsX[x] = zx;
-					
-					const LONG tOff = texture -> xOffsets[u] + texture -> yOffsets[v];
+					const LONG tOff =
+						texture -> xOffsets[u]
+						+ texture -> yOffsets[v]
+					;
 
-					dBitsX[x] = RGB(
+					dBitsY[x] = RGBd(
 						(FLOAT)tBits[tOff] * rx
 						, (FLOAT)tBits[tOff + 1] * gx
 						, (FLOAT)tBits[tOff + 2] * bx
 					);
+					zBitsY[x] = zx;
 					
 					//BYTE zx2 = (BYTE)(zx * 255.0f);
 					//dBitsX[x] = RGBAb(zx2, zx2, zx2, 1.0f);
 				}
 				
-				zx += szx;
-				ux += sux;
-				vx += svx;
-				rx += srx;
-				gx += sgx;
-				bx += sbx;
+				zx += szx; ux += sux;
+				vx += svx; rx += srx;
+				gx += sgx; bx += sbx;
 				//ax += sax;
 			}
 
@@ -498,6 +701,9 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			gg1 += sg1; gg2 += sg2;
 			bb1 += sb1; bb2 += sb2;
 			//aa1 += sa1; aa2 += sa2;
+			
+			dBitsY += width;
+			zBitsY += width;
 		}
 		
 		if(TRUE == swapX) {
@@ -508,33 +714,15 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			rr1 = rr2; sr1 = sr2;
 			gg1 = gg2; sg1 = sg2;
 			bb1 = bb2; sb1 = sb2;
-			//aa1 = aa2; sa1 = sa2;
+			// aa1 = aa2; sa1 = sa2;
 		}
 	}
 
 	if(y3 != y2) {
-		const FLOAT dy2 = INVERSE(y3 - y2);
-		
-		FLOAT sx2 = (x3 - x2) * dy2;
-		FLOAT sz2 = (z3 - z2) * dy2;
-		FLOAT su2 = (u3 - u2) * dy2;
-		FLOAT sv2 = (v3 - v2) * dy2;
-		FLOAT sr2 = (r3 - r2) * dy2;
-		FLOAT sg2 = (g3 - g2) * dy2;
-		FLOAT sb2 = (b3 - b2) * dy2;
-		//FLOAT sa2 = (a3 - a2) * dy2;
-		
-		FLOAT xx2 = x2, zz2 = z2;
-		FLOAT uu2 = u2, vv2 = v2;
-		FLOAT rr2 = r2, gg2 = g2;
-		FLOAT bb2 = b2;//, aa2 = a2;
-		
-		INT endY = y3 >= height
-			? height - 1
-			: (INT)ceil(y3) - 1
-		;
-		FLOAT subY;
-		INT startY;
+		endY = (y3 >= height
+			? height
+			: (INT)ceil(y3)
+		) - 1;
 		if(y2 <= 0) {
 			subY = -y2;
 			startY = 0;
@@ -543,41 +731,56 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			subY = (FLOAT)startY - y2;
 		}
 		
-		if(y2 != y1) {
-			FLOAT dy = y2 - y1;
-
-			xx1 = x1 + (sx1 * dy);
-			zz1 = z1 + (sz1 * dy);
-			uu1 = u1 + (su1 * dy);
-			vv1 = v1 + (sv1 * dy);
-			rr1 = r1 + (sr1 * dy);
-			gg1 = g1 + (sg1 * dy);
-			bb1 = b1 + (sb1 * dy);
-			//aa1 = a1 + (sa1 * dy);
-		}
-		
-		xx1 += sx1 * subY; xx2 += sx2 * subY;
-		zz1 += sz1 * subY; zz2 += sz2 * subY;
-		uu1 += su1 * subY; uu2 += su2 * subY;
-		vv1 += sv1 * subY; vv2 += sv2 * subY;
-		rr1 += sr1 * subY; rr2 += sr2 * subY;
-		gg1 += sg1 * subY; gg2 += sg2 * subY;
-		bb1 += sb1 * subY; bb2 += sb2 * subY;
-		//aa1 += sa1 * subY; aa2 += sa2 * subY;
-		
+		const FLOAT dy2 = 1.0f / (y3 - y2);
 		if(TRUE == swapX) {
-			SWAP(FLOAT, xx1, xx2); SWAP(FLOAT, sx1, sx2);
-			SWAP(FLOAT, zz1, zz2); SWAP(FLOAT, sz1, sz2);
-			SWAP(FLOAT, uu1, uu2); SWAP(FLOAT, su1, su2);
-			SWAP(FLOAT, vv1, vv2); SWAP(FLOAT, sv1, sv2);
-			SWAP(FLOAT, rr1, rr2); SWAP(FLOAT, sr1, sr2);
-			SWAP(FLOAT, gg1, gg2); SWAP(FLOAT, sg1, sg2);
-			SWAP(FLOAT, bb1, bb2); SWAP(FLOAT, sb1, sb2);
-			//SWAP(FLOAT, aa1, aa2); SWAP(FLOAT, sa1, sa2);
+			sx2 = sx1; sx1 = (x3 - x2) * dy2;
+			sz2 = sz1; sz1 = (z3 - z2) * dy2;
+			su2 = su1; su1 = (u3 - u2) * dy2;
+			sv2 = sv1; sv1 = (v3 - v2) * dy2;
+			sr2 = sr1; sr1 = (r3 - r2) * dy2;
+			sg2 = sg1; sg1 = (g3 - g2) * dy2;
+			sb2 = sb1; sb1 = (b3 - b2) * dy2;
+			//sa2 = sa1; sa1 = (a3 - a2) * dy2;
+			
+			const FLOAT dy = y2 != y1 ? ((FLOAT)startY - y1) : subY;
+
+			xx2 = x1 + (sx2 * dy); zz2 = z1 + (sz2 * dy);
+			uu2 = u1 + (su2 * dy); vv2 = v1 + (sv2 * dy);
+			rr2 = r1 + (sr2 * dy); gg2 = g1 + (sg2 * dy);
+			bb2 = b1 + (sb2 * dy);// aa2 = a1 + (sa2 * dy);
+			
+			xx1 = x2 + (sx1 * subY); zz1 = z2 + (sz1 * subY);
+			uu1 = u2 + (su1 * subY); vv1 = v2 + (sv1 * subY);
+			rr1 = r2 + (sr1 * subY); gg1 = g2 + (sg1 * subY);
+			bb1 = b2 + (sb1 * subY);// aa1 = a2 + (sa1 * subY);
+		} else {
+			sx2 = (x3 - x2) * dy2;
+			sz2 = (z3 - z2) * dy2;
+			su2 = (u3 - u2) * dy2;
+			sv2 = (v3 - v2) * dy2;
+			sr2 = (r3 - r2) * dy2;
+			sg2 = (g3 - g2) * dy2;
+			sb2 = (b3 - b2) * dy2;
+			//sa2 = (a3 - a2) * dy2;
+			
+			const FLOAT dy = y2 != y1 ? ((FLOAT)startY - y1) : subY;
+			
+			xx1 = x1 + (sx1 * dy); zz1 = z1 + (sz1 * dy);
+			uu1 = u1 + (su1 * dy); vv1 = v1 + (sv1 * dy);
+			rr1 = r1 + (sr1 * dy); gg1 = g1 + (sg1 * dy);
+			bb1 = b1 + (sb1 * dy);// aa1 = a1 + (sa1 * dy);
+		
+			xx2 = x2 + (sx2 * subY); zz2 = z2 + (sz2 * subY);
+			uu2 = u2 + (su2 * subY); vv2 = v2 + (sv2 * subY);
+			rr2 = r2 + (sr2 * subY); gg2 = g2 + (sg2 * subY);
+			bb2 = b2 + (sb2 * subY);// aa2 = a2 + (sa2 * subY);
 		}
+		
+		zBitsY = zBits + mBuffer.yOffsets[startY];
+		dBitsY = dBits + mBuffer.yOffsets[startY];
 
 		for(INT y = startY; y <= endY; ++y) {
-			const FLOAT dx = INVERSE(xx2 - xx1);
+			const FLOAT dx = 1.0f / (xx2 - xx1);
 			
 			const FLOAT szx = (zz2 - zz1) * dx;
 			const FLOAT sux = (uu2 - uu1) * dx;
@@ -587,20 +790,10 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			const FLOAT sbx = (bb2 - bb1) * dx;
 			//const FLOAT sax = (aa2 - aa1) * dx;
 			
-			FLOAT zx = zz1;
-			FLOAT ux = uu1;
-			FLOAT vx = vv1;
-			FLOAT rx = rr1;
-			FLOAT gx = gg1;
-			FLOAT bx = bb1;
-			//FLOAT ax = aa1;
-			
-			INT endX = xx2 >= width
-				? width - 1
-				: (INT)ceil(xx2) - 1
-			;
-			FLOAT subX;
-			INT startX;
+			endX = (xx2 >= width
+				? width
+				: (INT)ceil(xx2)
+			) - 1;
 			if(xx1 <= 0) {
 				subX = -xx1;
 				startX = 0;
@@ -609,43 +802,31 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 				subX = (FLOAT)startX - xx1;
 			}
 			
-			zx += szx * subX;
-			ux += sux * subX;
-			vx += svx * subX;
-			rx += srx * subX;
-			gx += sgx * subX;
-			bx += sbx * subX;
-			//ax += sax * subX;
-			
-			FLOAT *zBitsX = zBits + zBuffer.yOffsets[y];
-			DWORD *dBitsX = dBits + mBuffer.yOffsets[y];
+			zx = zz1 + (szx * subX);
+			ux = uu1 + (sux * subX);
+			vx = vv1 + (svx * subX);
+			rx = rr1 + (srx * subX);
+			gx = gg1 + (sgx * subX);
+			bx = bb1 + (sbx * subX);
+			//ax = aa1 + (sax * subX);
 			
 			for(INT x = startX; x <= endX; ++x) {
-				if(zx < 1.0f && zx > zBitsX[x]) {
-					FLOAT zp = 1.0f / zx;
-					INT u = (INT)(ux * zp);
-					INT v = (INT)(vx * zp);
-					
-					if(u < 0) {
-						u = 0;
-					} else if(u > tWidth) {
-						u = tWidth;
-					}
-					if(v < 0) {
-						v = 0;
-					} else if(v > tHeight) {
-						v = tHeight;
-					}
+				if(zx < 1.0f && zx > zBitsY[x]) {
+					const FLOAT zp = 1.0f / zx;
+					const INT u = (INT)(ux * zp);
+					const INT v = (INT)(vx * zp);
 				
-					zBitsX[x] = zx;
+					const LONG tOff =
+						texture -> xOffsets[u]
+						+ texture -> yOffsets[v]
+					;
 					
-					const LONG tOff = texture -> xOffsets[u] + texture -> yOffsets[v];
-					
-					dBitsX[x] = RGB(
+					dBitsY[x] = RGBd(
 						(FLOAT)tBits[tOff] * rx
 						, (FLOAT)tBits[tOff + 1] * gx
 						, (FLOAT)tBits[tOff + 2] * bx
 					);
+					zBitsY[x] = zx;
 
 					//BYTE zx2 = (BYTE)(zx * 255.0f);
 					//dBitsX[x] = RGBAb(zx2, zx2, zx2, 1.0f);
@@ -668,16 +849,15 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			gg1 += sg1; gg2 += sg2;
 			bb1 += sb1; bb2 += sb2;
 			//aa1 += sa1; aa2 += sa2;
+			
+			dBitsY += width;
+			zBitsY += width;
 		}
 	}
 }
 
 VOID SoftwareRenderer::DrawHalfSpaceTriangle(Triangle &t) {
-	//const Bitmap *texture = textures[t.texId];
-	
-	//FLOAT *zBits = (FLOAT *)zBuffer.bits;
 	DWORD *dBits = (DWORD *)mBuffer.bits;
-	//BYTE *tBits = (BYTE *)texture -> data;
 
 	const INT X1 = (INT)(16.0f * t.v1.x);
 	const INT X2 = (INT)(16.0f * t.v2.x);
@@ -802,32 +982,14 @@ VOID SoftwareRenderer::DrawHalfSpaceTriangle(Triangle &t) {
 			}
 			
 			DWORD *dBitsX = dBits;
-			//BYTE *tBitsX = tBits + texture -> yOffsets[y % 64];
-			//if(tBitsX >= tBits + 4096) { tBitsX -= 4096; }
+			
 			if(0xF == a && 0xF == b && 0xF == c) {
-				//DWORD *dBitsX2 = dBitsX + width;
-				
 				for(INT iy = y, iyq = y + q; iy < iyq; ++iy) {
-					for(INT ix = x, ixq = x + q; ix < ixq; ix += 4) {
-						/*LONG offset = texture -> xOffsets[ix % 63];
-						dBitsX[ix] = RGBAb(
-							tBitsX[offset]
-							, tBitsX[offset + 1]
-							, tBitsX[offset + 2]
-							, 255
-						);*/
-						
+					for(INT ix = x, ixq = x + q; ix < ixq; ++ix) {
 						dBitsX[ix] = 0xff007f00;
-						dBitsX[ix + 1] = 0xff007f00;
-						dBitsX[ix + 2] = 0xff007f00;
-						dBitsX[ix + 3] = 0xff007f00;
-						//dBitsX2[ix] = 0xff007f00;
-						//dBitsX2[ix + 1] = 0xff007f00;
 					}
 
 					dBitsX += width;
-					//dBitsX2 = dBitsX + width;
-					//tBitsX = tBits + texture -> yOffsets[iy % 63];
 				}
 			} else {
 				for(INT iy = y, iyq = y + q; iy < iyq; ++iy) {
@@ -837,14 +999,6 @@ VOID SoftwareRenderer::DrawHalfSpaceTriangle(Triangle &t) {
 
 					for(INT ix = x, ixq = x + q; ix < ixq; ++ix) {
 						if((cx1 | cx2 | cx3) >= 0) {
-							/*LONG offset = texture -> xOffsets[ix % 63];
-							dBitsX[ix] = RGBAb(
-								tBitsX[offset]
-								, tBitsX[offset + 1]
-								, tBitsX[offset + 2]
-								, 255
-							);*/
-							
 							dBitsX[ix] = 0xff007f00;
 						}
 
@@ -858,7 +1012,6 @@ VOID SoftwareRenderer::DrawHalfSpaceTriangle(Triangle &t) {
 					cy3 += fdx31;
 
 					dBitsX += width;
-					//tBitsX = tBits + texture -> yOffsets[iy % 63];
 				}
 			}
 		}
@@ -867,221 +1020,84 @@ VOID SoftwareRenderer::DrawHalfSpaceTriangle(Triangle &t) {
 	}
 }
 
-/*VOID SoftwareRenderer::DrawLine(Vertex2c &v1, Vertex2c &v2) {
-	DWORD *bits, *cBits;
-	LONG width;
-	LONG offset;
-	Vertex2c v[2];
-	Color4f dc, vc[2], c, subC;
-	FLOAT x, y, sub;
-	FLOAT dx, dy;
+VOID SoftwareRenderer::DrawLine(Vertex2 &v1, Vertex2 &v2, DWORD color) {
+	Vertex2 v[2];
 
 	v[0] = v1;
 	v[1] = v2;
 
-	vc[0] = v[0].color;
-	vc[1] = v[1].color;
+	const FLOAT dy = v[0].y - v[1].y;
+	const FLOAT dx = v[0].x - v[1].x;
 
-	dy = v[0].y - v[1].y;
-	dx = v[0].x - v[1].x;
-	dc = vc[0] - vc[1];
-
-	bits = (DWORD*)mBuffer.GetBits();
-	cBits = (DWORD*)cBuffer.GetBits();
-	width = mBuffer.GetWidth();
-
-	//sub = dc / dy;
-	//FLOAT c = v[0].color;
+	DWORD *bits = (DWORD *)mBuffer.bits;
 
 	if(abs(dy) > abs(dx)) {
 		if(v[0].y > v[1].y) {
-			SWAP(Vertex2c, v[0], v[1]);
-			SWAP(Color4f, vc[0], vc[1]);
+			SWAP(Vertex2, v[0], v[1]);
 		}
 
-		subC = dc / dy;
-		sub = dx / dy;
+		const FLOAT sub = dx / dy;
 
-		c = vc[0];
-		x = v[0].x;
-
-		LONG y1 = (LONG)ceil(v[0].y);
-		LONG y2 = (LONG)ceil(v[1].y);
-		if(y1 < 0) {
-			x -= sub * y1;
-			c -= subC * y1;
+		FLOAT x;
+		INT y1;
+		const INT y2 = v[1].y >= height ? height - 1 : (INT)ceil(v[1].y);
+		if(v[0].y <= 0) {
 			y1 = 0;
+			x = v[0].x - sub * (INT)ceil(v[0].y);
+		} else {
+			y1 = (INT)ceil(v[0].y);
+			x = v[0].x;
 		}
-		if(y2 >= (LONG)props.screenHeight) {
-			y2 = props.screenHeight - 1;
-		}
-		for(INT y = y1; y < y2; y++) {
-			if(x >= props.screenWidth) {
+		
+		DWORD *bitsX = bits;
+		for(INT y = y1; y < y2; ++y) {
+			if(x >= width) {
 				break;
 			}
 
 			if(x >= 0) {
-				offset = (y * width) + (INT)x;
-				if(0x0 == *(cBits + offset)) {
-					*(bits + offset) = RGBAColor4f(c);
-					*(cBits + offset) = 0xffffff;
-				}
+				bitsX = bits + mBuffer.yOffsets[y];
+				bitsX[(INT)x] = color;
 			}
 
 			x += sub;
-			c += subC;
 		}
 	} else {
 		if(v[0].x > v[1].x) {
-			SWAP(Vertex2c, v[0], v[1]);
-			SWAP(Color4f, vc[0], vc[1]);
+			SWAP(Vertex2, v[0], v[1]);
 		}
 
-		subC = dc / dx;
-		sub = dy / dx;
+		const FLOAT sub = dy / dx;
 
-		c = vc[0];
-		y = v[0].y;
-
-		LONG x1 = (LONG)ceil(v[0].x);
-		LONG x2 = (LONG)ceil(v[1].x);
-		if(x1 < 0) {
-			y -= sub * x1;
-			c -= subC * x1;
+		FLOAT y;
+		INT x1;
+		const INT x2 = v[1].x >= width ? width - 1 : (INT)ceil(v[1].x);
+		if(v[0].x < 0) {
 			x1 = 0;
-		}
-		if(x2 >= (LONG)props.screenWidth) {
-			x2 = props.screenWidth - 1;
+			y = v[0].y - sub * (INT)ceil(v[0].x);
+		} else {
+			x1 = (INT)ceil(v[0].x);
+			y = v[0].y;
 		}
 
-		for(INT x = x1; x < x2; x++) {
-			if(y >= props.screenHeight) {
+		DWORD *bitsX = bits;
+		for(INT x = x1; x < x2; ++x) {
+			if(y >= height) {
 				break;
 			}
 
 			if(y >= 0) {
-				offset = (((INT)y) * width) + x;
-				if(0x0 == *(cBits + offset)) {
-					*(bits + offset) = RGBAColor4f(c);
-					*(cBits + offset) = 0xffffff;
-				}
+				bitsX = bits + mBuffer.yOffsets[(INT)y];
+				bitsX[x] = color;
 			}
 
 			y += sub;
-			c+= subC;
 		}
 	}
 }
 
-VOID SoftwareRenderer::DrawLine(Vertex3c &v1, Vertex3c &v2) {
-	DWORD *bits, *cBits;
-	LONG width;
-	LONG offset;
-	Vertex3c v[2];
-	Color4f dc, vc[2], c, subC;
-	FLOAT x, y, sub;
-	FLOAT dx, dy;
-
-	v[0] = v1;
-	v[1] = v2;
-
-	vc[0] = v[0].color;
-	vc[1] = v[1].color;
-
-	dy = v[0].y - v[1].y;
-	dx = v[0].x - v[1].x;
-	dc = vc[0] - vc[1];
-
-	bits = (DWORD*)mBuffer.GetBits();
-	cBits = (DWORD*)cBuffer.GetBits();
-	width = mBuffer.GetWidth();
-
-	//sub = dc / dy;
-	//FLOAT c = v[0].color;
-
-	if(abs(dy) > abs(dx)) {
-		if(v[0].y > v[1].y) {
-			SWAP(Vertex3c, v[0], v[1]);
-			SWAP(Color4f, vc[0], vc[1]);
-		}
-
-		subC = dc / dy;
-		sub = dx / dy;
-
-		c = vc[0];
-		x = v[0].x;
-
-		LONG y1 = (LONG)ceil(v[0].y);
-		LONG y2 = (LONG)ceil(v[1].y);
-		if(y1 < 0) {
-			x -= sub * y1;
-			c -= subC * y1;
-			y1 = 0;
-		}
-		if(y2 >= (LONG)props.screenHeight) {
-			y2 = props.screenHeight - 1;
-		}
-		for(INT y = y1; y < y2; y++) {
-			if(x >= props.screenWidth) {
-				break;
-			}
-
-			if(x >= 0) {
-				offset = (y * width) + (INT)x;
-				if(*(cBits + offset) < 0xffffff) {
-					*(bits + offset) = RGBAColor4f(c);
-					*(cBits + offset) = 0xffffff;
-				}
-			}
-
-			x += sub;
-			c += subC;
-		}
-	} else {
-		if(v[0].x > v[1].x) {
-			SWAP(Vertex3c, v[0], v[1]);
-			SWAP(Color4f, vc[0], vc[1]);
-		}
-
-		subC = dc / dx;
-		sub = dy / dx;
-
-		c = vc[0];
-		y = v[0].y;
-
-		LONG x1 = (LONG)ceil(v[0].x);
-		LONG x2 = (LONG)ceil(v[1].x);
-		if(x1 < 0) {
-			y -= sub * x1;
-			c -= subC * x1;
-			x1 = 0;
-		}
-		if(x2 >= (LONG)props.screenWidth) {
-			x2 = props.screenWidth - 1;
-		}
-
-		for(INT x = x1; x < x2; x++) {
-			if(y >= props.screenHeight) {
-				break;
-			}
-
-			if(y >= 0) {
-				offset = (((INT)y) * width) + x;
-				//if(*(cBits + offset) < 0xffffff) {
-					*(bits + offset) = RGBAColor4f(c);
-					*(cBits + offset) = 0xffffff;
-				//}
-			}
-
-			y += sub;
-			c+= subC;
-		}
-	}
-}*/
-
 HRESULT SoftwareRenderer::SetSize(DWORD width, DWORD height) {
 	ReleaseBuffer(mBuffer);
-	ReleaseBuffer(cBuffer);
 	ReleaseBuffer(zBuffer);
 
 	props.screenHeight = height;
@@ -1090,7 +1106,6 @@ HRESULT SoftwareRenderer::SetSize(DWORD width, DWORD height) {
 
 	if(
 		FAILED(mBuffer.Init(mDeviceContext, width, height))
-		|| FAILED(cBuffer.Init(mDeviceContext, width, height))
 		|| FALSE == zBuffer.Init(width, height)
 	) {
 		return E_FAIL;
@@ -1106,7 +1121,6 @@ HRESULT SoftwareRenderer::SetSize(DWORD width, DWORD height) {
 
 VOID SoftwareRenderer::CleanUp() {
 	ReleaseBuffer(mBuffer);
-	ReleaseBuffer(cBuffer);
 	ReleaseBuffer(zBuffer);
 
 	if(NULL != mDeviceContext) {

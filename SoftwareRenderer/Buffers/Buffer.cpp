@@ -18,9 +18,10 @@ BOOL Buffer::Init(DWORD w, DWORD h) {
 	height = h;
 	mWidth = w / 2;
 	mHeight = h / 2;
+	size = w * h * sizeof(FLOAT);
 	
 	yOffsets = new LONG[h];
-	for(INT i = 0; i < h; ++i) {
+	for(INT i = 0; i < (INT)h; ++i) {
 		yOffsets[i] = w * i;
 	}
 	
@@ -47,8 +48,8 @@ VOID Buffer::DeInit() {
 }
 
 VOID Buffer::Clear(FLOAT c) {
-	std::fill((FLOAT*)bits, (FLOAT*)bits + width * height, c);
-	//memset(bits, c, width * height * sizeof(FLOAT));
+	//std::fill((FLOAT*)bits, (FLOAT*)bits + width * height, c);
+	memset(bits, 0, size);
 }
 
 BOOL Buffer::IsBuffer() {

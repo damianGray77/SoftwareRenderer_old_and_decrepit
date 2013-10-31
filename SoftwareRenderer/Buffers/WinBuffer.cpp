@@ -47,12 +47,13 @@ HRESULT WinBuffer::Init(HDC dc, DWORD w, DWORD h) {
 	dibDC = dc;
 
 	width = w;
-	mWidth = w * 0.5f;
+	mWidth = (DWORD)(w * 0.5f);
 	height = h;
-	mHeight = h * 0.5f;
+	mHeight = (DWORD)(h * 0.5f);
+	size = w * h * sizeof(DWORD);
 	
 	yOffsets = new LONG[h];
-	for(INT i = 0; i < h; ++i) {
+	for(INT i = 0; i < (INT)h; ++i) {
 		yOffsets[i] = w * i;
 	}
 
@@ -87,7 +88,7 @@ VOID WinBuffer::DeInit() {
 }
 
 VOID WinBuffer::Clear(DWORD c) {
-	memset(bits, c, sizeof(DWORD) * width * height);
+	memset(bits, c, size);
 }
 
 HBITMAP WinBuffer::GetDIB() {

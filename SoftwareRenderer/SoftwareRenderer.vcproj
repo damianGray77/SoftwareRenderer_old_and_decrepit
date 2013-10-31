@@ -113,7 +113,10 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
+				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				EnableFiberSafeOptimizations="true"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -183,10 +186,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\Structs\Polygon3cuv.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\SoftwareRenderer.cpp"
 				>
 			</File>
@@ -234,11 +233,19 @@
 					>
 				</File>
 				<File
+					RelativePath=".\Structs\Light.cpp"
+					>
+				</File>
+				<File
 					RelativePath=".\Structs\Model.cpp"
 					>
 				</File>
 				<File
 					RelativePath=".\Structs\Polygon3.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\Structs\Polygon3cuv.cpp"
 					>
 				</File>
 				<File
@@ -325,10 +332,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\Structs\Polygon3cuv.h"
-				>
-			</File>
-			<File
 				RelativePath=".\Resource.h"
 				>
 			</File>
@@ -368,11 +371,19 @@
 					>
 				</File>
 				<File
+					RelativePath=".\Structs\Light.h"
+					>
+				</File>
+				<File
 					RelativePath=".\Structs\Model.h"
 					>
 				</File>
 				<File
 					RelativePath=".\Structs\Polygon3.h"
+					>
+				</File>
+				<File
+					RelativePath=".\Structs\Polygon3cuv.h"
 					>
 				</File>
 				<File
