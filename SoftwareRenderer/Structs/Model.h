@@ -20,6 +20,9 @@ public:
 	INT *visible;
 	INT	numTexts;
 	Texture *textures;
+	Vector3 rotation;
+	Vertex3 position;
+	Matrix4x4 projection;
 
 	Model();
 	~Model();

@@ -80,16 +80,18 @@ VOID InitSinCos() {
 VOID CalculateFrameRate() {
 	static FLOAT fps = 0.0f;
     static FLOAT lastTime = 0.0f;
+    static FLOAT frameTime = 0.0f;
 	static WCHAR strFrameRate[50] = {0};
 
     FLOAT currentTime = GetTickCount() * 0.001f;				
-
+    g_Camera.moveAdjust = currentTime - frameTime;
+	frameTime = currentTime;
     ++fps;
 
     if(currentTime - lastTime > 1.0f) {
 	    lastTime = currentTime;
 
-		swprintf(strFrameRate, sizeof(WCHAR) * 50, L"Current Frames Per Second: %d", int(fps));
+		swprintf(strFrameRate, sizeof(WCHAR) * 50, L"Current Frames Per Second: %f", g_Camera.moveAdjust);
 		SetWindowTextW(props.hWnd, strFrameRate);
         fps = 0;
     }
@@ -129,6 +131,8 @@ WPARAM MainLoop() {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         } else {
+			CalculateFrameRate();
+			
 			if(TRUE == paused) {
 				continue;
 			}
@@ -138,8 +142,7 @@ WPARAM MainLoop() {
 				if(FAILED(g_3D -> Render())) {
 					PostQuitMessage(0);
 				}
-
-				CalculateFrameRate();
+				
 			//} else {
 			//	Sleep(1);
 			//}

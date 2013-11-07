@@ -93,11 +93,11 @@ VOID SoftwareRenderer::RecalcDist() {
 	dist = cotFOV * mBuffer.mHeight;
 }
 
-VOID SoftwareRenderer::Project(PVertex3c &v) {
+VOID SoftwareRenderer::Project(PVertex3c &v, Matrix4x4 &m) {
 	Vertex3 &screen = v.posScreen;
 	Vertex3 &world = v.posWorld;
 
-	world = v.position * mWorld;
+	world = v.position * m;
 	
 	if(0 == world.z) {
 		return;
@@ -111,7 +111,7 @@ VOID SoftwareRenderer::Project(PVertex3c &v) {
 }
 
 VOID SoftwareRenderer::Clear(DWORD color) {
-	mBuffer.Clear(color);
+	//mBuffer.Clear(color);
 	zBuffer.Clear(0.0f);
 }
 
@@ -123,22 +123,19 @@ HRESULT SoftwareRenderer::Render() {
 	// however, the zBuffer still does need clearing on each frame.
 	//zBuffer.Clear(0.0f);
 
-	static FLOAT rX = 1000.0f, rY = 1000.0f, rZ = 1000.0f;
-
-	Matrix4x4::Identity(mWorld);
-	Matrix4x4::Rotate(mWorld, rX, rY, rZ);
-	Matrix4x4::Translate(mWorld, g_Camera.Position().x, g_Camera.Position().y, g_Camera.Position().z);
+	mWorld = g_Camera.Look();
 	
-	/*Matrix4x4::Identity(mWorldInv);
-	Matrix4x4::Rotate(mWorldInv, -rX, -rY, -rZ);
-	Matrix4x4::Translate(mWorldInv, -g_Camera.Position().x, -g_Camera.Position().y, -g_Camera.Position().z);*/
+	Matrix4x4::Identity(player.projection);
+	Matrix4x4::Rotate(player.projection, player.rotation.x, player.rotation.y, player.rotation.z);
+	Matrix4x4::Translate(player.projection, player.position.x, player.position.y, 9.0f);
 	
-	rX += 50.0f; if(rX > SINCOSMAX) { rX -= SINCOSMAX; }
-	rY += 25.0f; if(rY > SINCOSMAX) { rY -= SINCOSMAX; }
-	rZ += 12.5f; if(rZ > SINCOSMAX) { rZ -= SINCOSMAX; }
+	//player.projection *= mWorld;
+	
+	player.rotation.x += 5000.0f * g_Camera.moveAdjust; if(player.rotation.x > SINCOSMAX) { player.rotation.x -= SINCOSMAX; }
+	player.rotation.y += 2500.0f * g_Camera.moveAdjust; if(player.rotation.y > SINCOSMAX) { player.rotation.y -= SINCOSMAX; }
+	player.rotation.z += 1250.0f * g_Camera.moveAdjust; if(player.rotation.z > SINCOSMAX) { player.rotation.z -= SINCOSMAX; }
 
 	player.numVisible = 0;
-
 	INT i1, i2, i3;
 	FLOAT biggest;
 	INT poly;
@@ -156,9 +153,9 @@ HRESULT SoftwareRenderer::Render() {
 		i2 = player.polygons[i].verts[1];
 		i3 = player.polygons[i].verts[2];
 		
-		Project(player.vertices[i1]);
-		Project(player.vertices[i2]);
-		Project(player.vertices[i3]);
+		Project(player.vertices[i1], player.projection);
+		Project(player.vertices[i2], player.projection);
+		Project(player.vertices[i3], player.projection);
 		
 		sv1 = player.vertices[i1].posScreen;
 		sv2 = player.vertices[i2].posScreen;
@@ -537,18 +534,6 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 	)) {
 		return;
 	}
-
-	const FLOAT x1 = t.v1.x, y1 = t.v1.y;
-	const FLOAT x2 = t.v2.x, y2 = t.v2.y;
-	const FLOAT x3 = t.v3.x, y3 = t.v3.y;
-	const FLOAT u1 = t.v1.u * z1, v1 = t.v1.v * z1;
-	const FLOAT u2 = t.v2.u * z2, v2 = t.v2.v * z2;
-	const FLOAT u3 = t.v3.u * z3, v3 = t.v3.v * z3;
-	const FLOAT r1 = t.v1.c.r, g1 = t.v1.c.g, b1 = t.v1.c.b;//, a1 = t.v1.c.a;
-	const FLOAT r2 = t.v2.c.r, g2 = t.v2.c.g, b2 = t.v2.c.b;//, a2 = t.v2.c.a;
-	const FLOAT r3 = t.v3.c.r, g3 = t.v3.c.g, b3 = t.v3.c.b;//, a3 = t.v3.c.a;
-
-	BOOL swapX = FALSE;
 	
 	const Bitmap *texture = textures[t.texId];
 	const INT tWidth = texture -> infoHeader.biWidth - 1;
@@ -556,7 +541,19 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 	const BYTE *tBits = (BYTE *)texture -> data;
 	FLOAT *zBitsY, *zBits = (FLOAT *)zBuffer.bits;
 	DWORD *dBitsY, *dBits = (DWORD *)mBuffer.bits;
-		
+
+	const FLOAT x1 = t.v1.x, y1 = t.v1.y;
+	const FLOAT x2 = t.v2.x, y2 = t.v2.y;
+	const FLOAT x3 = t.v3.x, y3 = t.v3.y;
+	const FLOAT u1 = t.v1.u * z1 * tWidth, v1 = t.v1.v * z1 * tHeight;
+	const FLOAT u2 = t.v2.u * z2 * tWidth, v2 = t.v2.v * z2 * tHeight;
+	const FLOAT u3 = t.v3.u * z3 * tWidth, v3 = t.v3.v * z3 * tHeight;
+	const FLOAT r1 = t.v1.c.r, g1 = t.v1.c.g, b1 = t.v1.c.b;//, a1 = t.v1.c.a;
+	const FLOAT r2 = t.v2.c.r, g2 = t.v2.c.g, b2 = t.v2.c.b;//, a2 = t.v2.c.a;
+	const FLOAT r3 = t.v3.c.r, g3 = t.v3.c.g, b3 = t.v3.c.b;//, a3 = t.v3.c.a;
+
+	BOOL swapX = FALSE;
+	
 	const FLOAT dy1 = 1.0f / (y3 - y1);
 	
 	FLOAT sx1 = (x3 - x1) * dy1;
@@ -600,6 +597,7 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			startY = (INT)ceil(y1);
 			subY = (FLOAT)startY - y1;
 		}
+		if(startY >= endY) { return; }
 		
 		const FLOAT dy2 = 1.0f / (y2 - y1);
 		sx2 = (x2 - x1) * dy2;
@@ -668,8 +666,15 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			for(INT x = startX; x <= endX; ++x) {
 				if(zx < 1.0f && zx > zBitsY[x]) {
 					const FLOAT zp = 1.0f / zx;
-					const INT u = (INT)(ux * zp);
-					const INT v = (INT)(vx * zp);
+					INT u = (INT)(ux * zp);
+					INT v = (INT)(vx * zp);
+					
+					if(u >= tWidth || u <= 0) {
+						u = ABS(u) & tWidth;
+					}
+					if(v >= tHeight || v <= 0) {
+						v = ABS(v) & tHeight;
+					}
 					
 					const LONG tOff =
 						texture -> xOffsets[u]
@@ -730,6 +735,7 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			startY = (INT)ceil(y2);
 			subY = (FLOAT)startY - y2;
 		}
+		if(startY >= endY) { return; }
 		
 		const FLOAT dy2 = 1.0f / (y3 - y2);
 		if(TRUE == swapX) {
@@ -813,9 +819,16 @@ VOID SoftwareRenderer::DrawScanLineTriangle(Triangle &t) {
 			for(INT x = startX; x <= endX; ++x) {
 				if(zx < 1.0f && zx > zBitsY[x]) {
 					const FLOAT zp = 1.0f / zx;
-					const INT u = (INT)(ux * zp);
-					const INT v = (INT)(vx * zp);
-				
+					INT u = (INT)(ux * zp);
+					INT v = (INT)(vx * zp);
+					
+					if(u >= tWidth || u <= 0) {
+						u = ABS(u) & tWidth;
+					}
+					if(v >= tHeight || v <= 0) {
+						v = ABS(v) & tHeight;
+					}
+					
 					const LONG tOff =
 						texture -> xOffsets[u]
 						+ texture -> yOffsets[v]

@@ -1,6 +1,7 @@
 #ifndef SOFTWARERENDERER_CAMERA_H
 #define SOFTWARERENDERER_CAMERA_H
 
+#include "Math/Matrix4x4.h"
 #include "Structs/Vertex3.h"
 #include "Structs/Vector3.h"
 
@@ -26,8 +27,10 @@ public:
 	VOID SetViewByMouse();
 	VOID CheckForMovement();
 
-	VOID Look();
+	Matrix4x4 Look();
 	VOID Update();
+	
+	FLOAT moveAdjust;
 
 	~Camera() {};
 private:

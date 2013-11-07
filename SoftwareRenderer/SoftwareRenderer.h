@@ -31,7 +31,7 @@ public:
 	VOID SetFov(FLOAT newFov);
 	VOID SetClip(LONG cNear, LONG cFar);
 	VOID RecalcDist();
-	VOID Project(PVertex3c &v);
+	VOID Project(PVertex3c &v, Matrix4x4 &m);
 	VOID CalculatePolygonLight(const INT i, const PVertex3c &light);
 	VOID Clear(DWORD color);
 	HRESULT Render();

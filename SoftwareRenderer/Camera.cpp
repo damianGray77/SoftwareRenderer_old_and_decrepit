@@ -24,55 +24,51 @@ VOID Camera::PositionCamera(FLOAT positionX, FLOAT positionY, FLOAT positionZ, F
 VOID Camera::MoveCamera(FLOAT speed) {
 	Vector3 vec = view - position;
 	vec = Vector3::Normal(vec);
-
-	position.x += vec.x * speed;
-	position.z += vec.z * speed;
 	
-	view.x += vec.x * speed;
-	view.z += vec.z * speed;
+	position += vec * speed;
+	view += vec * speed;
 }
 
 VOID Camera::StrafeCamera(FLOAT speed) {
-	position.x -= strafe.x * speed;
-	position.z -= strafe.z * speed;
-
-	view.x -= strafe.x * speed;
-	view.z -= strafe.z * speed;
+	position -= strafe * speed;
+	view -= strafe * speed;
 }
 
 VOID Camera::RotateView(FLOAT angle, FLOAT x, FLOAT y, FLOAT z) {
+	if(0.0f == angle) {
+		return;
+	}
+
+	Vector3 vec = view - position;	
+
+	const FLOAT cosTheta = COS(angle);
+	const FLOAT sinTheta = SIN(angle);
+	const FLOAT invCosTheta = (1 - cosTheta);
+	const FLOAT invCosThetaX = invCosTheta * x;
+	const FLOAT invCosThetaY = invCosTheta * y;
+	const FLOAT invCosThetaZ = invCosTheta * z;
+	const FLOAT invCosThetaXY = invCosThetaX * y;
+	const FLOAT invCosThetaYZ = invCosThetaY * z;
+	const FLOAT invCosThetaZX = invCosThetaZ * x;
+	const FLOAT sinThetaX = x * sinTheta;
+	const FLOAT sinThetaY = y * sinTheta;
+	const FLOAT sinThetaZ = z * sinTheta;
+	
 	Vector3 newView;
-	Vector3 vec;	
 
-	vec.x = view.x - position.x;	
-	vec.y = view.y - position.y;
-	vec.z = view.z - position.z;
+	newView.x  = (cosTheta + invCosThetaX * x) * vec.x;
+	newView.x += (invCosThetaXY - sinThetaZ)   * vec.y;
+	newView.x += (invCosThetaZX + sinThetaY)   * vec.z;
 
-	FLOAT cosTheta = COS(angle);
-	FLOAT sinTheta = SIN(angle);
-	FLOAT invCosTheta = (1 - cosTheta);
-	FLOAT invCosThetaXY = invCosTheta * x * y;
-	FLOAT invCosThetaYZ = invCosTheta * y * z;
-	FLOAT invCosThetaZX = invCosTheta * z * x;
-	FLOAT sinThetaX = x * sinTheta;
-	FLOAT sinThetaY = y * sinTheta;
-	FLOAT sinThetaZ = z * sinTheta;
+	newView.y  = (invCosThetaXY + sinThetaZ)   * vec.x;
+	newView.y += (cosTheta + invCosThetaY * y) * vec.y;
+	newView.y += (invCosThetaYZ - sinThetaX)   * vec.z;
 
-	newView.x  = (cosTheta + invCosTheta * x * x) * vec.x;
-	newView.x += (invCosThetaXY - sinThetaZ) * vec.y;
-	newView.x += (invCosThetaZX + sinThetaY) * vec.z;
+	newView.z  = (invCosThetaZX - sinThetaY)   * vec.x;
+	newView.z += (invCosThetaYZ + sinThetaX)   * vec.y;
+	newView.z += (cosTheta + invCosThetaZ * z) * vec.z;
 
-	newView.y  = (invCosThetaXY + sinThetaZ) * vec.x;
-	newView.y += (cosTheta + invCosTheta * y * y) * vec.y;
-	newView.y += (invCosThetaYZ - sinThetaX) * vec.z;
-
-	newView.z  = (invCosThetaZX - sinThetaY) * vec.x;
-	newView.z += (invCosThetaYZ + sinThetaX) * vec.y;
-	newView.z += (cosTheta + invCosTheta * z * z) * vec.z;
-
-	view.x = position.x + newView.x;
-	view.y = position.y + newView.y;
-	view.z = position.z + newView.z;
+	view = position + newView;
 }
 
 VOID Camera::RotateAroundPoint(Vector3 center, FLOAT angle, FLOAT x, FLOAT y, FLOAT z) {
@@ -121,8 +117,8 @@ VOID Camera::SetViewByMouse() {
 
 	SetCursorPos(middleX, middleY);							
 
-	angleY = (FLOAT)((middleX - mousePos.x)) / 1000.0f;		
-	angleZ = (FLOAT)((middleY - mousePos.y)) / 1000.0f;
+	angleY = (FLOAT)((middleX - mousePos.x)); // 1000.0f;		
+	angleZ = (FLOAT)((middleY - mousePos.y)); // 1000.0f;
 	
 	static float lastRotX = 0.0f; 
  	lastRotX = currentRotX;
@@ -158,28 +154,31 @@ VOID Camera::SetViewByMouse() {
 }
 
 VOID Camera::CheckForMovement() {
+	FLOAT mSpeed = kSpeed * moveAdjust;
+	FLOAT rSpeed = 30.0f * moveAdjust;
+	
 	if((GetKeyState(VK_UP) & 0x80) || (GetKeyState('W') & 0x80)) {
-		MoveCamera(kSpeed);
+		MoveCamera(-mSpeed);
 	}
 
 	if((GetKeyState(VK_DOWN) & 0x80) || (GetKeyState('S') & 0x80)) {
-		MoveCamera(-kSpeed);
+		MoveCamera(mSpeed);
 	}
 
 	if(GetKeyState(VK_LEFT) & 0x80) {
-		RotateView(30.0f, 0, 1, 0);	
+		RotateView(-rSpeed, 0, 1, 0);	
 	}
 
 	if(GetKeyState(VK_RIGHT) & 0x80) {
-		RotateView(-30.0f, 0, 1, 0);	
+		RotateView(rSpeed, 0, 1, 0);	
 	}
 
 	if(GetKeyState('A') & 0x80) {
-		StrafeCamera(-kSpeed);
+		StrafeCamera(-mSpeed);
 	}
 
 	if(GetKeyState('D') & 0x80) {
-		StrafeCamera(kSpeed);
+		StrafeCamera(mSpeed);
 	}	
 }
 
@@ -191,10 +190,28 @@ VOID Camera::Update() {
 	CheckForMovement();
 }
 
-VOID Camera::Look() {
-	//gluLookAt(position.x, position.y, position.z,	
-	//		  view.x,	 view.y,     view.z,	
-	//		  upVector.x, upVector.y, upVector.z);
+Matrix4x4 Camera::Look() {
+	Vector3 z = position - view;
+	z = Vector3::Normal(z);
+	
+	Vector3 x = Vector3::Cross(upVector, z);
+	x = Vector3::Normal(x);
+	
+	Vector3 y = Vector3::Cross(z, x);
+    y = Vector3::Normal(y);
+    
+    FLOAT ex = -Vector3::Dot(x, position);
+    FLOAT ey = -Vector3::Dot(y, position);
+    FLOAT ez = -Vector3::Dot(z, position);
+	
+	Matrix4x4 m = {
+		x.x, y.x, z.x, 0.0f
+		, x.y, y.y, z.y, 0.0f
+		, x.z, y.z, z.z, 0.0f
+		, ex, ey, ez, 1.0f
+	};
+    
+    return m;
 }
 
 Camera g_Camera;
